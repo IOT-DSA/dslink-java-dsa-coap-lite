@@ -1,5 +1,5 @@
 {
-  "name": "dslink-java-coap-client",
+  "name": "dslink-java-dsa-coap",
   "version": "0.0.2",
   "description": "DSA-over-COAP",
   "license": "Apache",
@@ -7,13 +7,13 @@
     "name": "Kenneth Endfinger",
     "email": "kaendfinger@gmail.com"
   },
-  "main": "bin/dslink-java-coap-client",
+  "main": "bin/dslink-java-dsa-coap",
   "repository": {
     "type": "git",
-    "url": "https://github.com/IOT-DSA/dslink-java-coap-client"
+    "url": "https://github.com/IOT-DSA/dslink-java-dsa-coap"
   },
   "bugs": {
-    "url": "https://github.com/IOT-DSA/dslink-java-coap-client/issues"
+    "url": "https://github.com/IOT-DSA/dslink-java-dsa-coap/issues"
   },
   "configs": {
     "name": {
