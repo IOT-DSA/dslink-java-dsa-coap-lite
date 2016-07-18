@@ -1,0 +1,46 @@
+{
+  "name": "dslink-java-coap-client",
+  "version": "0.0.2",
+  "description": "DSA-over-COAP",
+  "license": "Apache",
+  "author": {
+    "name": "Kenneth Endfinger",
+    "email": "kaendfinger@gmail.com"
+  },
+  "main": "bin/dslink-java-coap-client",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/IOT-DSA/dslink-java-coap-client"
+  },
+  "bugs": {
+    "url": "https://github.com/IOT-DSA/dslink-java-coap-client/issues"
+  },
+  "configs": {
+    "name": {
+      "type": "string",
+      "default": "DSA-COAP"
+    },
+    "broker": {
+      "type": "url"
+    },
+    "token": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "path",
+      "default": "nodes.json"
+    },
+    "key": {
+      "type": "path",
+      "default": ".key"
+    },
+    "log": {
+      "type": "enum",
+      "default": "info"
+    },
+    "handler_class": {
+      "type": "string",
+      "default": "org.dsa.iot.coap.CoapHandler"
+    }
+  }
+}
