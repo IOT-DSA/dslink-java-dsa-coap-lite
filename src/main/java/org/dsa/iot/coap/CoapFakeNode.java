@@ -6,6 +6,11 @@ import org.dsa.iot.dslink.node.NodeBuilder;
 
 public class CoapFakeNode extends Node {
     private CoapClientController controller;
+
+    public String getCoapPath() {
+        return coapPath;
+    }
+
     private String coapPath;
 
     public CoapFakeNode(String name, Node parent, Linkable link, CoapClientController controller, String coapPath) {
@@ -50,5 +55,9 @@ public class CoapFakeNode extends Node {
             b.setProfile(profile);
         }
         return b;
+    }
+
+    public CoapClientController getController() {
+        return controller;
     }
 }
