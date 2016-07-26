@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("Duplicates")
 public class CoapNodeController {
     private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
 
@@ -204,9 +205,7 @@ public class CoapNodeController {
             value = new Value((String) null);
         }
 
-        if (key.equals("$is")) {
-            //node.setProfile(value.getString());
-        } else if (key.equals("$type")) {
+        if (key.equals("$type")) {
             n.setValueType(ValueType.toValueType(value.getString()));
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
@@ -234,7 +233,9 @@ public class CoapNodeController {
         } else if (key.startsWith("$$")) {
             n.setRoConfig(key.substring(2), value);
         } else if (key.startsWith("$")) {
-            n.setConfig(key.substring(1), value);
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
         } else if (key.startsWith("@")) {
             n.setAttribute(key.substring(1), value);
         }
@@ -247,9 +248,7 @@ public class CoapNodeController {
             value = new Value((String) null);
         }
 
-        if (key.equals("$is")) {
-            //node.setProfile(value.getString());
-        } else if (key.equals("$type")) {
+        if (key.equals("$type")) {
             n.setValueType(ValueType.toValueType(value.getString()));
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
@@ -277,7 +276,9 @@ public class CoapNodeController {
         } else if (key.startsWith("$$")) {
             n.setRoConfig(key.substring(2), value);
         } else if (key.startsWith("$")) {
-            n.setConfig(key.substring(1), value);
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
         } else if (key.startsWith("@")) {
             n.setAttribute(key.substring(1), value);
         }
