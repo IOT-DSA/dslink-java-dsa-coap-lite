@@ -175,7 +175,7 @@ public class CoapNodeController {
                 }
             } else if (o instanceof JsonObject) {
                 JsonObject obj = (JsonObject) o;
-                if (obj.contains("change") && obj.get("change").equals("remove")) {
+                if ("remove".equals(obj.get("change"))) {
                     String key = obj.get("name");
 
                     if (key.startsWith("$$")) {
