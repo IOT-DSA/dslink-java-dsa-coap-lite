@@ -8,7 +8,7 @@ import org.eclipse.californium.core.server.resources.CoapExchange;
 
 public class RootResource extends CoapResource {
     public RootResource() {
-        super("__root");
+        super("conn");
     }
 
     @Override
