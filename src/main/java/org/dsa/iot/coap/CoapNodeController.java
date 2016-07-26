@@ -1,7 +1,9 @@
 package org.dsa.iot.coap;
 
+import org.dsa.iot.coap.utils.NodeBuilders;
 import org.dsa.iot.coap.utils.Tables;
 import org.dsa.iot.dslink.node.Node;
+import org.dsa.iot.dslink.node.NodeBuilder;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
 import org.dsa.iot.dslink.node.actions.*;
@@ -16,13 +18,19 @@ import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapHandler;
 import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.californium.core.CoapResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("Duplicates")
 public class CoapNodeController {
+    private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
+
     private CoapClientController controller;
     private int handles = 0;
     private boolean hasHandle = false;
@@ -86,6 +94,7 @@ public class CoapNodeController {
     private CoapObserveRelation relation;
 
     public void updateListData(JsonArray listArray) {
+        List<NodeBuilder> childQueue = new ArrayList<>();
         for (Object o : listArray) {
             if (o instanceof JsonArray) {
                 JsonArray m = (JsonArray) o;
@@ -100,6 +109,10 @@ public class CoapNodeController {
                 }
 
                 Value value = ValueUtils.toValue(mvalue);
+
+                if (value == null) {
+                    value = new Value((String) null);
+                }
 
                 //noinspection StatementWithEmptyBody
                 if (key.equals("$is")) {
@@ -134,9 +147,7 @@ public class CoapNodeController {
                     Action act = getOrCreateAction(node, Permission.NONE, false);
                     act.setResultType(ResultType.toEnum(string));
                 } else if (key.startsWith("$$")) {
-                    if (value != null) {
-                        node.setRoConfig(key.substring(2), value);
-                    }
+                    node.setRoConfig(key.substring(2), value);
                 } else if (key.startsWith("$")) {
                     node.setConfig(key.substring(1), value);
                 } else if (key.startsWith("@")) {
@@ -145,27 +156,26 @@ public class CoapNodeController {
                     Node child = node.getChild(key);
 
                     if (child == null) {
-                        child = node.createChild(key).build();
-                        child.setSerializable(false);
-                        try {
-                            String go = coapPath + "/" + URLEncoder.encode(key, "UTF-8");
-                            CoapNodeController nc = new CoapNodeController(controller, child, go);
-                            nc.init();
-                        } catch (UnsupportedEncodingException e) {
-                            e.printStackTrace();
+                        NodeBuilder builder = node.createChild(key);
+                        if (mvalue instanceof JsonObject) {
+                            JsonObject co = (JsonObject) mvalue;
+                            for (Map.Entry<String, Object> entry : co) {
+                                applyCreatedAttribute(builder, entry.getKey(), entry.getValue());
+                            }
                         }
-                    }
-
-                    if (mvalue instanceof JsonObject) {
-                        JsonObject co = (JsonObject) mvalue;
-                        for (Map.Entry<String, Object> entry : co) {
-                            applyAttribute(child, entry.getKey(), entry.getValue(), true);
+                        builder.setSerializable(false);
+                    } else {
+                        if (mvalue instanceof JsonObject) {
+                            JsonObject co = (JsonObject) mvalue;
+                            for (Map.Entry<String, Object> entry : co) {
+                                applyAttribute(child, entry.getKey(), entry.getValue(), true);
+                            }
                         }
                     }
                 }
             } else if (o instanceof JsonObject) {
                 JsonObject obj = (JsonObject) o;
-                if (obj.get("change").equals("remove")) {
+                if ("remove".equals(obj.get("change"))) {
                     String key = obj.get("name");
 
                     if (key.startsWith("$$")) {
@@ -184,51 +194,100 @@ public class CoapNodeController {
                 }
             }
         }
+
+        NodeBuilders.applyMultiCoapChildBuilders((CoapFakeNode) node, childQueue);
     }
 
-    public void applyAttribute(Node node, String key, Object mvalue, boolean isChild) {
+    public void applyCreatedAttribute(NodeBuilder n, String key, Object mvalue) {
         Value value = ValueUtils.toValue(mvalue);
 
-        if (key.equals("$is")) {
-            //node.setProfile(value.getString());
-        } else if (key.equals("$type")) {
-            node.setValueType(ValueType.toValueType(value.getString()));
+        if (value == null) {
+            value = new Value((String) null);
+        }
+
+        if (key.equals("$type")) {
+            n.setValueType(ValueType.toValueType(value.getString()));
         } else if (key.equals("$name")) {
-            node.setDisplayName(value.getString());
+            n.setDisplayName(value.getString());
         } else if (key.equals("$invokable")) {
             Permission perm = Permission.toEnum(value.getString());
-            Action act = getOrCreateAction(node, perm, isChild);
+            Action act = getOrCreateAction(n.getChild(), perm, true);
             act.setPermission(perm);
         } else if (key.equals("$columns")) {
             JsonArray array = (JsonArray) mvalue;
-            Action act = getOrCreateAction(node, Permission.NONE, isChild);
+            Action act = getOrCreateAction(n.getChild(), Permission.NONE, true);
             iterateActionMetaData(act, array, true);
         } else if (key.equals("$writable")) {
             String string = value.getString();
-            node.setWritable(Writable.toEnum(string));
+            n.setWritable(Writable.toEnum(string));
         } else if (key.equals("$params")) {
             JsonArray array = (JsonArray) mvalue;
-            Action act = getOrCreateAction(node, Permission.NONE, isChild);
+            Action act = getOrCreateAction(n.getChild(), Permission.NONE, true);
             iterateActionMetaData(act, array, false);
         } else if (key.equals("$hidden")) {
-            node.setHidden(value.getBool());
+            n.setHidden(value.getBool());
         } else if (key.equals("$result")) {
             String string = value.getString();
-            Action act = getOrCreateAction(node, Permission.NONE, isChild);
+            Action act = getOrCreateAction(n.getChild(), Permission.NONE, true);
             act.setResultType(ResultType.toEnum(string));
         } else if (key.startsWith("$$")) {
-            node.setRoConfig(key.substring(2), value);
+            n.setRoConfig(key.substring(2), value);
         } else if (key.startsWith("$")) {
-            node.setConfig(key.substring(1), value);
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
         } else if (key.startsWith("@")) {
-            node.setAttribute(key.substring(1), value);
+            n.setAttribute(key.substring(1), value);
+        }
+    }
+
+    public void applyAttribute(Node n, String key, Object mvalue, boolean isChild) {
+        Value value = ValueUtils.toValue(mvalue);
+
+        if (value == null) {
+            value = new Value((String) null);
+        }
+
+        if (key.equals("$type")) {
+            n.setValueType(ValueType.toValueType(value.getString()));
+        } else if (key.equals("$name")) {
+            n.setDisplayName(value.getString());
+        } else if (key.equals("$invokable")) {
+            Permission perm = Permission.toEnum(value.getString());
+            Action act = getOrCreateAction(n, perm, isChild);
+            act.setPermission(perm);
+        } else if (key.equals("$columns")) {
+            JsonArray array = (JsonArray) mvalue;
+            Action act = getOrCreateAction(n, Permission.NONE, isChild);
+            iterateActionMetaData(act, array, true);
+        } else if (key.equals("$writable")) {
+            String string = value.getString();
+            n.setWritable(Writable.toEnum(string));
+        } else if (key.equals("$params")) {
+            JsonArray array = (JsonArray) mvalue;
+            Action act = getOrCreateAction(n, Permission.NONE, isChild);
+            iterateActionMetaData(act, array, false);
+        } else if (key.equals("$hidden")) {
+            n.setHidden(value.getBool());
+        } else if (key.equals("$result")) {
+            String string = value.getString();
+            Action act = getOrCreateAction(n, Permission.NONE, isChild);
+            act.setResultType(ResultType.toEnum(string));
+        } else if (key.startsWith("$$")) {
+            n.setRoConfig(key.substring(2), value);
+        } else if (key.startsWith("$")) {
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
+        } else if (key.startsWith("@")) {
+            n.setAttribute(key.substring(1), value);
         }
     }
 
     public void updateValueData(JsonArray valueArray) {
         Value val = ValueUtils.toValue(valueArray.get(0), (String) valueArray.get(1));
 
-        if (val.getType().getRawName().equals(node.getValueType().getRawName())) {
+        if (!val.getType().getRawName().equals(node.getValueType().getRawName())) {
             node.setValueType(val.getType());
         }
 
@@ -261,6 +320,8 @@ public class CoapNodeController {
 
         if (response != null) {
             handler.onLoad(response);
+        } else {
+            LOG.warn("Loading eagerly failed for " + coapPath);
         }
     }
 
@@ -364,8 +425,7 @@ public class CoapNodeController {
                     updateValueData(valueArray);
                 }
             } catch (Exception e) {
-                System.err.println("Error while handling COAP response at " + coapPath);
-                e.printStackTrace();
+                LOG.error("Error while handling COAP response at " + coapPath, e);
             }
         }
 

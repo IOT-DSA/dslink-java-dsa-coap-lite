@@ -72,7 +72,7 @@ public class CoapClientController {
                 }
 
                 try {
-                    CoapResponse root = getClient("/__root").get();
+                    CoapResponse root = getClient("/" + Constants.CONN).get();
                     if (root == null || !root.isSuccess()) {
                         throw new Exception("Failed to connect.");
                     }
@@ -121,16 +121,6 @@ public class CoapClientController {
         for (CoapClient client : clients.values()) {
             client.setEndpoint(endpoint);
         }
-    }
-
-    public void withClient(String path, final Handler<CoapClient> handler) {
-        final CoapClient client = getClient(path);
-        Objects.getDaemonThreadPool().execute(new Runnable() {
-            @Override
-            public void run() {
-                handler.handle(client);
-            }
-        });
     }
 
     private Endpoint endpoint;
