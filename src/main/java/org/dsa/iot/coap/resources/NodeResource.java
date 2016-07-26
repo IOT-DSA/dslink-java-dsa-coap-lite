@@ -27,6 +27,8 @@ import org.eclipse.californium.core.observe.ObserveRelation;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 import org.eclipse.californium.core.server.resources.Resource;
 import org.eclipse.californium.core.server.resources.ResourceObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -34,6 +36,8 @@ import java.util.HashSet;
 import java.util.concurrent.*;
 
 public class NodeResource extends CoapResource {
+    private static final Logger LOG = LoggerFactory.getLogger(NodeResource.class);
+
     private CoapServerController controller;
     private int count = 0;
     private int listRid;
@@ -139,7 +143,7 @@ public class NodeResource extends CoapResource {
                                     tc.encode(EncodingFormat.MESSAGE_PACK)
                             );
                         } else {
-                            System.out.println("Action exchange is already complete.");
+                            LOG.warn("Action exchange is already complete.");
                         }
                     }
                 }

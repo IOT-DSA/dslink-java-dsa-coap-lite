@@ -18,6 +18,8 @@ import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapHandler;
 import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.californium.core.CoapResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -26,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 public class CoapNodeController {
+    private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
+
     private CoapClientController controller;
     private int handles = 0;
     private boolean hasHandle = false;
@@ -316,7 +320,7 @@ public class CoapNodeController {
         if (response != null) {
             handler.onLoad(response);
         } else {
-            System.out.println("Loading eagerly failed for " + coapPath);
+            LOG.warn("Loading eagerly failed for " + coapPath);
         }
     }
 
@@ -420,8 +424,7 @@ public class CoapNodeController {
                     updateValueData(valueArray);
                 }
             } catch (Exception e) {
-                System.err.println("Error while handling COAP response at " + coapPath);
-                e.printStackTrace();
+                LOG.error("Error while handling COAP response at " + coapPath, e);
             }
         }
 
