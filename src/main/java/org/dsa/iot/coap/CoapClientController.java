@@ -72,7 +72,7 @@ public class CoapClientController {
                 }
 
                 try {
-                    CoapResponse root = getClient("/conn").get();
+                    CoapResponse root = getClient("/" + Constants.CONN).get();
                     if (root == null || !root.isSuccess()) {
                         throw new Exception("Failed to connect.");
                     }

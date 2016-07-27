@@ -1,5 +1,6 @@
 package org.dsa.iot.coap.resources;
 
+import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.util.json.EncodingFormat;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
@@ -8,7 +9,7 @@ import org.eclipse.californium.core.server.resources.CoapExchange;
 
 public class RootResource extends CoapResource {
     public RootResource() {
-        super("conn");
+        super(Constants.CONN);
     }
 
     @Override

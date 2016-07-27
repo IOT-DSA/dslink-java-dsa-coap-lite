@@ -18,6 +18,8 @@ import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapHandler;
 import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.californium.core.CoapResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -25,7 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings("Duplicates")
 public class CoapNodeController {
+    private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
+
     private CoapClientController controller;
     private int handles = 0;
     private boolean hasHandle = false;
@@ -170,7 +175,7 @@ public class CoapNodeController {
                 }
             } else if (o instanceof JsonObject) {
                 JsonObject obj = (JsonObject) o;
-                if (obj.contains("change") && obj.get("change").equals("remove")) {
+                if ("remove".equals(obj.get("change"))) {
                     String key = obj.get("name");
 
                     if (key.startsWith("$$")) {
@@ -200,9 +205,7 @@ public class CoapNodeController {
             value = new Value((String) null);
         }
 
-        if (key.equals("$is")) {
-            //node.setProfile(value.getString());
-        } else if (key.equals("$type")) {
+        if (key.equals("$type")) {
             n.setValueType(ValueType.toValueType(value.getString()));
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
@@ -230,7 +233,9 @@ public class CoapNodeController {
         } else if (key.startsWith("$$")) {
             n.setRoConfig(key.substring(2), value);
         } else if (key.startsWith("$")) {
-            n.setConfig(key.substring(1), value);
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
         } else if (key.startsWith("@")) {
             n.setAttribute(key.substring(1), value);
         }
@@ -243,9 +248,7 @@ public class CoapNodeController {
             value = new Value((String) null);
         }
 
-        if (key.equals("$is")) {
-            //node.setProfile(value.getString());
-        } else if (key.equals("$type")) {
+        if (key.equals("$type")) {
             n.setValueType(ValueType.toValueType(value.getString()));
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
@@ -273,7 +276,9 @@ public class CoapNodeController {
         } else if (key.startsWith("$$")) {
             n.setRoConfig(key.substring(2), value);
         } else if (key.startsWith("$")) {
-            n.setConfig(key.substring(1), value);
+            if (!key.equals("$is")) {
+                n.setConfig(key.substring(1), value);
+            }
         } else if (key.startsWith("@")) {
             n.setAttribute(key.substring(1), value);
         }
@@ -316,7 +321,7 @@ public class CoapNodeController {
         if (response != null) {
             handler.onLoad(response);
         } else {
-            System.out.println("Loading eagerly failed for " + coapPath);
+            LOG.warn("Loading eagerly failed for " + coapPath);
         }
     }
 
@@ -420,8 +425,7 @@ public class CoapNodeController {
                     updateValueData(valueArray);
                 }
             } catch (Exception e) {
-                System.err.println("Error while handling COAP response at " + coapPath);
-                e.printStackTrace();
+                LOG.error("Error while handling COAP response at " + coapPath, e);
             }
         }
 
