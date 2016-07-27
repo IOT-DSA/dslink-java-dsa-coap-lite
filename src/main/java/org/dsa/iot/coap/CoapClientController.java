@@ -23,6 +23,8 @@ import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class CoapClientController {
@@ -116,11 +118,20 @@ public class CoapClientController {
         }
 
         endpoint = new CoapEndpoint();
-        endpoint.setExecutor(Objects.getThreadPool());
+        endpoint.setExecutor(getExecutorService());
 
         for (CoapClient client : clients.values()) {
             client.setEndpoint(endpoint);
         }
+    }
+
+    private ScheduledExecutorService executorService;
+
+    public ScheduledExecutorService getExecutorService() {
+        if (executorService == null || executorService.isShutdown() || executorService.isTerminated()) {
+            executorService = new ScheduledThreadPoolExecutor(4);
+        }
+        return executorService;
     }
 
     private Endpoint endpoint;
@@ -128,7 +139,7 @@ public class CoapClientController {
     public CoapClient getClient(final String path) {
         if (!clients.containsKey(path)) {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
-            client.setExecutor(Objects.getThreadPool());
+            client.setExecutor(getExecutorService());
             client.setEndpoint(endpoint);
             clients.put(path, client);
         }
