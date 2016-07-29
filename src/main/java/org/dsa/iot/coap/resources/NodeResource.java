@@ -9,7 +9,6 @@ import org.dsa.iot.dslink.methods.StreamState;
 import org.dsa.iot.dslink.methods.requests.InvokeRequest;
 import org.dsa.iot.dslink.methods.requests.ListRequest;
 import org.dsa.iot.dslink.methods.requests.SubscribeRequest;
-import org.dsa.iot.dslink.methods.responses.CloseResponse;
 import org.dsa.iot.dslink.methods.responses.InvokeResponse;
 import org.dsa.iot.dslink.methods.responses.ListResponse;
 import org.dsa.iot.dslink.node.Node;
@@ -31,7 +30,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -83,10 +85,11 @@ public class NodeResource extends CoapResource {
                 e.printStackTrace();
             }
             isSynchronized = true;
+            count--;
         }
 
-        count--;
-        byte[] encoded = object.encode(EncodingFormat.MESSAGE_PACK);
+        JsonObject obj = new JsonObject(object);
+        byte[] encoded = obj.encode(EncodingFormat.MESSAGE_PACK);
         exchange.respond(CoAP.ResponseCode.VALID, encoded);
     }
 
@@ -126,26 +129,23 @@ public class NodeResource extends CoapResource {
             final Container<ScheduledFuture> future = new Container<>();
             final Container<Boolean> isDone = new Container<>(false);
 
-            final int rid = requester.invoke(requesterInvokeRequest, new Handler<InvokeResponse>() {
-                @Override
-                public void handle(InvokeResponse event) {
-                    lastResponse.setValue(event);
+            final int rid = requester.invoke(requesterInvokeRequest, event -> {
+                lastResponse.setValue(event);
 
-                    if (event.getState() == StreamState.CLOSED) {
-                        if (future.getValue() != null && !future.getValue().isDone()) {
-                            future.getValue().cancel(false);
-                        }
+                if (event.getState() == StreamState.CLOSED) {
+                    if (future.getValue() != null && !future.getValue().isDone()) {
+                        future.getValue().cancel(false);
+                    }
 
-                        if (!isDone.getValue()) {
-                            JsonObject tc = Tables.encodeFullTable(event, event.getTable());
-                            isDone.setValue(true);
-                            exchange.respond(
-                                    CoAP.ResponseCode.VALID,
-                                    tc.encode(EncodingFormat.MESSAGE_PACK)
-                            );
-                        } else {
-                            LOG.warn("Action exchange is already complete.");
-                        }
+                    if (!isDone.getValue()) {
+                        JsonObject tc = Tables.encodeFullTable(event, event.getTable());
+                        isDone.setValue(true);
+                        exchange.respond(
+                                CoAP.ResponseCode.VALID,
+                                tc.encode(EncodingFormat.MESSAGE_PACK)
+                        );
+                    } else {
+                        LOG.warn("Action exchange is already complete.");
                     }
                 }
             });
@@ -161,12 +161,9 @@ public class NodeResource extends CoapResource {
             }, 5000, TimeUnit.MILLISECONDS));
         } else if (invokeCloseRequest != null) {
             int rid = invokeCloseRequest.get("rid");
-            requester.closeStream(rid, new Handler<CloseResponse>() {
-                @Override
-                public void handle(CloseResponse event) {
-                    byte[] bytes = new JsonObject().encode(EncodingFormat.MESSAGE_PACK);
-                    exchange.respond(CoAP.ResponseCode.VALID, bytes);
-                }
+            requester.closeStream(rid, event -> {
+                byte[] bytes = new JsonObject().encode(EncodingFormat.MESSAGE_PACK);
+                exchange.respond(CoAP.ResponseCode.VALID, bytes);
             });
         } else {
             byte[] bytes = new JsonObject().encode(EncodingFormat.MESSAGE_PACK);
@@ -223,10 +220,7 @@ public class NodeResource extends CoapResource {
             ListRequest listRequest = new ListRequest(getDsaPath());
             listRid = requester.list(listRequest, new ListHandler());
         } else if (count <= 0 && listening) {
-            requester.closeStream(listRid, new Handler<CloseResponse>() {
-                @Override
-                public void handle(CloseResponse event) {
-                }
+            requester.closeStream(listRid, event -> {
             });
         }
     }
@@ -253,6 +247,7 @@ public class NodeResource extends CoapResource {
                         String name = CustomURLEncoder.encode(node.getName(), "UTF-8").replaceAll(" ", "%20");
                         if (getRealChild(name) != null) {
                             delete(getRealChild(name));
+                            childs.remove(name);
                         }
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
@@ -307,15 +302,21 @@ public class NodeResource extends CoapResource {
         }
     }
 
-    private JsonObject object = new JsonObject();
+    private ConcurrentHashMap<String, Object> object = new ConcurrentHashMap<>();
+    private Map<String, Resource> childs = new HashMap<>();
 
     @Override
     public Resource getChild(String name) {
         Resource child = super.getChild(name);
         if (child == null) {
-            String nodePath = (getDsaPath() + "/" + name).replaceAll("%20", " ").replaceAll("\\+", " ").replaceAll("//", "/");
-            child = new NodeResource(controller, nodePath);
-            add(child);
+            if (childs.containsKey(name)) {
+                child = childs.get(name);
+            } else {
+                String nodePath = (getDsaPath() + "/" + name).replaceAll("%20", " ").replaceAll("\\+", " ").replaceAll("//", "/");
+                child = new NodeResource(controller, nodePath);
+                add(child);
+                childs.put(name, child);
+            }
         }
         return child;
     }
