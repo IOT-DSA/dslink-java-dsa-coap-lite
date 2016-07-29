@@ -4,6 +4,8 @@ import org.dsa.iot.dslink.link.Linkable;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
 
+import java.io.UnsupportedEncodingException;
+
 public class CoapFakeNode extends Node {
     private CoapClientController controller;
 
@@ -15,6 +17,7 @@ public class CoapFakeNode extends Node {
 
     public CoapFakeNode(String name, Node parent, Linkable link, CoapClientController controller, String coapPath) {
         super(name, parent, link);
+
         this.controller = controller;
         this.coapPath = coapPath;
     }
@@ -43,15 +46,20 @@ public class CoapFakeNode extends Node {
 
     @Override
     public NodeBuilder createChild(String name, String profile) {
-        NodeBuilder b = new NodeBuilder(this, new CoapFakeNode(
-                name,
-                this,
-                getLink(),
-                controller,
-                coapPath + "/" + name
-        ));
+        NodeBuilder b = null;
+        try {
+            b = new NodeBuilder(this, new CoapFakeNode(
+                    name,
+                    this,
+                    getLink(),
+                    controller,
+                    coapPath + "/" + CustomURLEncoder.encode(name, "UTF-8").replaceAll(" ", "%20")
+            ));
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
 
-        if (profile != null) {
+        if (b != null && profile != null) {
             b.setProfile(profile);
         }
         return b;

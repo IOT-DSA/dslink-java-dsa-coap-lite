@@ -1,6 +1,7 @@
 package org.dsa.iot.coap.resources;
 
 import org.dsa.iot.coap.CoapServerController;
+import org.dsa.iot.coap.CustomURLEncoder;
 import org.dsa.iot.coap.utils.Tables;
 import org.dsa.iot.commons.Container;
 import org.dsa.iot.dslink.link.Requester;
@@ -11,7 +12,6 @@ import org.dsa.iot.dslink.methods.requests.SubscribeRequest;
 import org.dsa.iot.dslink.methods.responses.CloseResponse;
 import org.dsa.iot.dslink.methods.responses.InvokeResponse;
 import org.dsa.iot.dslink.methods.responses.ListResponse;
-import org.dsa.iot.dslink.methods.responses.UnsubscribeResponse;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.value.SubscriptionValue;
 import org.dsa.iot.dslink.node.value.ValueUtils;
@@ -31,9 +31,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.HashSet;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 public class NodeResource extends CoapResource {
     private static final Logger LOG = LoggerFactory.getLogger(NodeResource.class);
@@ -48,7 +49,7 @@ public class NodeResource extends CoapResource {
     private static String getResourceName(String path) {
         String[] parts = path.split("/");
         try {
-            return URLEncoder.encode(parts[parts.length - 1], "UTF-8");
+            return CustomURLEncoder.encode(parts[parts.length - 1], "UTF-8").replaceAll(" ", "%20");
         } catch (UnsupportedEncodingException e) {
             return parts[parts.length - 1];
         }
@@ -149,19 +150,13 @@ public class NodeResource extends CoapResource {
                 }
             });
 
-            future.setValue(Objects.getDaemonThreadPool().schedule(new Runnable() {
-                @Override
-                public void run() {
-                    InvokeResponse response = lastResponse.getValue();
-                    if (response == null || response.getState() != StreamState.CLOSED) {
-                        isDone.setValue(true);
-                        exchange.respond(CoAP.ResponseCode.GATEWAY_TIMEOUT);
-                        requester.closeStream(rid, new Handler<CloseResponse>() {
-                            @Override
-                            public void handle(CloseResponse event) {
-                            }
-                        });
-                    }
+            future.setValue(Objects.getDaemonThreadPool().schedule(() -> {
+                InvokeResponse response = lastResponse.getValue();
+                if (response == null || response.getState() != StreamState.CLOSED) {
+                    isDone.setValue(true);
+                    exchange.respond(CoAP.ResponseCode.GATEWAY_TIMEOUT);
+                    requester.closeStream(rid, event -> {
+                    });
                 }
             }, 5000, TimeUnit.MILLISECONDS));
         } else if (invokeCloseRequest != null) {
@@ -255,17 +250,17 @@ public class NodeResource extends CoapResource {
                 boolean removed = event.getUpdates().get(node);
                 if (removed) {
                     try {
-                        String name = URLEncoder.encode(node.getName(), "UTF-8");
-                        if (getChild(name) != null) {
-                            delete(getChild(name));
+                        String name = CustomURLEncoder.encode(node.getName(), "UTF-8").replaceAll(" ", "%20");
+                        if (getRealChild(name) != null) {
+                            delete(getRealChild(name));
                         }
                     } catch (UnsupportedEncodingException e) {
                         e.printStackTrace();
                     }
                 } else {
                     try {
-                        String name = URLEncoder.encode(node.getName(), "UTF-8");
-                        if (getChild(name) == null) {
+                        String name = CustomURLEncoder.encode(node.getName(), "UTF-8").replaceAll(" ", "%20");
+                        if (getRealChild(name) == null) {
                             add(new NodeResource(controller, node.getPath()));
                         }
                     } catch (UnsupportedEncodingException e) {
@@ -281,15 +276,18 @@ public class NodeResource extends CoapResource {
                         add(new SubData(getDsaPath(), 0));
                     }});
 
-                    requester.subscribe(subscribeRequest, new SubscribeHandler());
+                    try {
+                        requester.subscribe(subscribeRequest, new SubscribeHandler());
+                    } catch (Exception e) {
+                        if (!e.getMessage().contains("already subscribed")) {
+                            throw e;
+                        }
+                    }
                 }
             } else {
                 if (isSubscribed) {
                     isSubscribed = false;
-                    requester.unsubscribe(getDsaPath(), new Handler<UnsubscribeResponse>() {
-                        @Override
-                        public void handle(UnsubscribeResponse event) {
-                        }
+                    requester.unsubscribe(getDsaPath(), event1 -> {
                     });
                 }
             }
@@ -315,10 +313,14 @@ public class NodeResource extends CoapResource {
     public Resource getChild(String name) {
         Resource child = super.getChild(name);
         if (child == null) {
-            String nodePath = (getDsaPath() + "/" + name).replaceAll("%20", " ").replaceAll("//", "/");
+            String nodePath = (getDsaPath() + "/" + name).replaceAll("%20", " ").replaceAll("\\+", " ").replaceAll("//", "/");
             child = new NodeResource(controller, nodePath);
             add(child);
         }
         return child;
+    }
+
+    public Resource getRealChild(String name) {
+        return super.getChild(name);
     }
 }

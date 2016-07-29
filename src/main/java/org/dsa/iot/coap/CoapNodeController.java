@@ -6,11 +6,13 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.Writable;
-import org.dsa.iot.dslink.node.actions.*;
+import org.dsa.iot.dslink.node.actions.Action;
+import org.dsa.iot.dslink.node.actions.EditorType;
+import org.dsa.iot.dslink.node.actions.Parameter;
+import org.dsa.iot.dslink.node.actions.ResultType;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.node.value.ValueUtils;
-import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.EncodingFormat;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
@@ -22,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,36 +50,24 @@ public class CoapNodeController {
     public void init() {
         client = controller.getClient(coapPath);
 
-        node.getListener().setOnListHandler(new Handler<Node>() {
-            @Override
-            public void handle(Node event) {
-                handles++;
-                checkHandles();
-            }
+        node.getListener().setOnListHandler(event -> {
+            handles++;
+            checkHandles();
         });
 
-        node.getListener().setOnListClosedHandler(new Handler<Node>() {
-            @Override
-            public void handle(Node event) {
-                handles--;
-                checkHandles();
-            }
+        node.getListener().setOnListClosedHandler(event -> {
+            handles--;
+            checkHandles();
         });
 
-        node.getListener().setOnSubscribeHandler(new Handler<Node>() {
-            @Override
-            public void handle(Node event) {
-                handles++;
-                checkHandles();
-            }
+        node.getListener().setOnSubscribeHandler(event -> {
+            handles++;
+            checkHandles();
         });
 
-        node.getListener().setOnUnsubscribeHandler(new Handler<Node>() {
-            @Override
-            public void handle(Node event) {
-                handles--;
-                checkHandles();
-            }
+        node.getListener().setOnUnsubscribeHandler(event -> {
+            handles--;
+            checkHandles();
         });
     }
 
@@ -98,6 +87,10 @@ public class CoapNodeController {
         for (Object o : listArray) {
             if (o instanceof JsonArray) {
                 JsonArray m = (JsonArray) o;
+
+                if (m.size() < 2) {
+                    continue;
+                }
 
                 String key = m.get(0);
                 Object mvalue;
@@ -186,7 +179,7 @@ public class CoapNodeController {
                         node.removeAttribute(key.substring(1));
                     } else {
                         try {
-                            node.removeChild(URLEncoder.encode(key, "UTF-8"));
+                            node.removeChild(CustomURLEncoder.encode(key, "UTF-8"));
                         } catch (UnsupportedEncodingException e) {
                             e.printStackTrace();
                         }
@@ -285,7 +278,7 @@ public class CoapNodeController {
     }
 
     public void updateValueData(JsonArray valueArray) {
-        Value val = ValueUtils.toValue(valueArray.get(0), (String) valueArray.get(1));
+        Value val = ValueUtils.toValue(valueArray.get(0), valueArray.get(1));
 
         if (!val.getType().getRawName().equals(node.getValueType().getRawName())) {
             node.setValueType(val.getType());
@@ -337,39 +330,35 @@ public class CoapNodeController {
     }
 
     private Action getRawAction(final Node node, Permission perm, final boolean isChild) {
-        return new Action(perm, new Handler<ActionResult>() {
-            @Override
-            public void handle(final ActionResult event) {
-                JsonObject params = event.getParameters();
-                JsonObject obj = new JsonObject();
-                obj.put("params", params);
+        return new Action(perm, event -> {
+            JsonObject params = event.getParameters();
+            JsonObject obj = new JsonObject();
+            obj.put("params", params);
 
-                JsonObject wrapper = new JsonObject();
-                wrapper.put("invoke", obj);
+            JsonObject wrapper = new JsonObject();
+            wrapper.put("invoke", obj);
 
-                event.getTable().sendReady();
+            event.getTable().sendReady();
 
-                CoapClient c;
-                if (!isChild) {
-                    c = client;
-                } else {
-                    c = controller.getClient(coapPath + "/" + Node.checkAndEncodeName(node.getName()));
+            CoapClient c;
+            if (!isChild) {
+                c = client;
+            } else {
+                c = controller.getClient(coapPath + "/" + Node.checkAndEncodeName(node.getName()));
+            }
+
+            c.post(new CoapHandler() {
+                @Override
+                public void onLoad(CoapResponse response) {
+                    JsonObject obj = new JsonObject(EncodingFormat.MESSAGE_PACK, response.getPayload());
+                    Tables.decodeFullTable(event.getTable(), obj);
+                    event.getTable().close();
                 }
 
-                c.post(new CoapHandler() {
-                    @Override
-                    public void onLoad(CoapResponse response) {
-                        JsonObject obj = new JsonObject(EncodingFormat.MESSAGE_PACK, response.getPayload());
-                        Tables.decodeFullTable(event.getTable(), obj);
-                        event.getTable().close();
-                    }
-
-                    @Override
-                    public void onError() {
-
-                    }
-                }, wrapper.encode(EncodingFormat.MESSAGE_PACK), 0);
-            }
+                @Override
+                public void onError() {
+                }
+            }, wrapper.encode(EncodingFormat.MESSAGE_PACK), 0);
         });
     }
 
