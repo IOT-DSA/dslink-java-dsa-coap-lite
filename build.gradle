@@ -5,8 +5,8 @@ apply plugin: 'application'
 version '0.0.2'
 
 mainClassName = 'org.dsa.iot.coap.Main'
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
