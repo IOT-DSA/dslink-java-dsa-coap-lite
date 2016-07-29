@@ -76,7 +76,11 @@ public class CoapClientController {
                 try {
                     CoapResponse root = getClient("/" + Constants.CONN).get();
                     if (root == null || !root.isSuccess()) {
-                        throw new Exception("Failed to connect.");
+                        root = getClient("/__root").get();
+
+                        if (root == null || !root.isSuccess()) {
+                            throw new Exception("Failed to connect.");
+                        }
                     }
 
                     JsonObject object = new JsonObject(EncodingFormat.MESSAGE_PACK, root.getPayload());
