@@ -139,6 +139,8 @@ public class CoapNodeController {
                     String string = value.getString();
                     Action act = getOrCreateAction(node, Permission.NONE, false);
                     act.setResultType(ResultType.toEnum(string));
+                } else if (key.equals("$$password")) {
+                    node.setPassword(value.getString().toCharArray());
                 } else if (key.startsWith("$$")) {
                     node.setRoConfig(key.substring(2), value);
                 } else if (key.startsWith("$")) {
