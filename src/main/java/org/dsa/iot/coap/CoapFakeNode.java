@@ -27,15 +27,26 @@ public class CoapFakeNode extends Node {
         Node child = super.getChild(name);
         if (child == null) {
             child = createChild(name).build();
-            CoapNodeController nodeController = new CoapNodeController(
+        }
+
+        if (!(child instanceof CoapFakeNode)) {
+            return child;
+        }
+
+        CoapNodeController nodeController = child.getMetaData();
+
+        if (nodeController == null) {
+            nodeController = new CoapNodeController(
                     controller,
                     child,
                     ((CoapFakeNode) child).coapPath
             );
 
             nodeController.init();
-            nodeController.loadNow();
         }
+
+        nodeController.loadIfNeeded();
+
         return child;
     }
 

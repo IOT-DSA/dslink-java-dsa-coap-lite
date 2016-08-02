@@ -1,6 +1,5 @@
 package org.dsa.iot.coap;
 
-import org.dsa.iot.coap.utils.NodeBuilders;
 import org.dsa.iot.coap.utils.Tables;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
@@ -25,7 +24,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 @SuppressWarnings("Duplicates")
@@ -42,12 +40,21 @@ public class CoapNodeController {
     public CoapNodeController(CoapClientController controller, Node node, String coapPath) {
         this.controller = controller;
         this.node = node;
+        this.coapPath = coapPath;
 
         node.setSerializable(false);
-        this.coapPath = coapPath;
+        node.setMetaData(this);
     }
 
+    private boolean isInitialized = false;
+
     public void init() {
+        if (isInitialized) {
+            return;
+        }
+
+        isInitialized = true;
+
         client = controller.getClient(coapPath);
 
         node.getListener().setOnListHandler(event -> {
@@ -83,7 +90,6 @@ public class CoapNodeController {
     private CoapObserveRelation relation;
 
     public void updateListData(JsonArray listArray) {
-        List<NodeBuilder> childQueue = new ArrayList<>();
         for (Object o : listArray) {
             if (o instanceof JsonArray) {
                 JsonArray m = (JsonArray) o;
@@ -140,7 +146,13 @@ public class CoapNodeController {
                     Action act = getOrCreateAction(node, Permission.NONE, false);
                     act.setResultType(ResultType.toEnum(string));
                 } else if (key.equals("$$password")) {
-                    node.setPassword(value.getString().toCharArray());
+                    if (value.getString() != null) {
+                        node.setPassword(value.getString().toCharArray());
+                    } else {
+                        node.setPassword(null);
+                    }
+                } else if (key.equals("$hasChildren")) {
+                    node.setHasChildren(value.getBool());
                 } else if (key.startsWith("$$")) {
                     node.setRoConfig(key.substring(2), value);
                 } else if (key.startsWith("$")) {
@@ -159,6 +171,15 @@ public class CoapNodeController {
                             }
                         }
                         builder.setSerializable(false);
+                        child = builder.build();
+
+                        CoapNodeController nodeController = new CoapNodeController(
+                                controller,
+                                child,
+                                ((CoapFakeNode) child).getCoapPath()
+                        );
+
+                        nodeController.init();
                     } else {
                         if (mvalue instanceof JsonObject) {
                             JsonObject co = (JsonObject) mvalue;
@@ -173,7 +194,9 @@ public class CoapNodeController {
                 if ("remove".equals(obj.get("change"))) {
                     String key = obj.get("name");
 
-                    if (key.startsWith("$$")) {
+                    if (key.equals("$hasChildren")) {
+                        node.setHasChildren(false);
+                    } else if (key.startsWith("$$")) {
                         node.removeRoConfig(key.substring(2));
                     } else if (key.startsWith("$")) {
                         node.removeConfig(key.substring(1));
@@ -190,7 +213,7 @@ public class CoapNodeController {
             }
         }
 
-        NodeBuilders.applyMultiCoapChildBuilders((CoapFakeNode) node, childQueue);
+        //NodeBuilders.applyMultiCoapChildBuilders((CoapFakeNode) node, childQueue);
     }
 
     public void applyCreatedAttribute(NodeBuilder n, String key, Object mvalue) {
@@ -212,6 +235,8 @@ public class CoapNodeController {
             JsonArray array = (JsonArray) mvalue;
             Action act = getOrCreateAction(n.getChild(), Permission.NONE, true);
             iterateActionMetaData(act, array, true);
+        } else if (key.equals("$hasChildren")) {
+            n.setHasChildren(value.getBool());
         } else if (key.equals("$writable")) {
             String string = value.getString();
             n.setWritable(Writable.toEnum(string));
@@ -245,6 +270,14 @@ public class CoapNodeController {
 
         if (key.equals("$type")) {
             n.setValueType(ValueType.toValueType(value.getString()));
+        } else if (key.equals("$hasChildren")) {
+            n.setHasChildren(value.getBool());
+        } else if (key.equals("$password")) {
+            if (value.getString() != null) {
+                n.setPassword(value.getString().toCharArray());
+            } else {
+                n.setPassword(null);
+            }
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
         } else if (key.equals("$invokable")) {
@@ -282,11 +315,16 @@ public class CoapNodeController {
     public void updateValueData(JsonArray valueArray) {
         Value val = ValueUtils.toValue(valueArray.get(0), valueArray.get(1));
 
-        if (!val.getType().getRawName().equals(node.getValueType().getRawName())) {
-            node.setValueType(val.getType());
-        }
+        if (val != null) {
+            if (val.getType() != null && node.getValueType() == null ||
+                    !val.getType().getRawName().equals(node.getValueType().getRawName())) {
+                node.setValueType(val.getType());
+            }
 
-        node.setValue(val);
+            node.setValue(val);
+        } else {
+            node.setValue(null);
+        }
     }
 
     public void startHandles() {
@@ -309,7 +347,13 @@ public class CoapNodeController {
         }
     }
 
+    private boolean hasEverLoaded = false;
+
     public void loadNow() {
+        hasEverLoaded = true;
+
+        init();
+
         CoapResponse response = client.get();
         NodeCoapHandler handler = new NodeCoapHandler();
 
@@ -317,6 +361,12 @@ public class CoapNodeController {
             handler.onLoad(response);
         } else {
             LOG.warn("Loading eagerly failed for " + coapPath);
+        }
+    }
+
+    public void loadIfNeeded() {
+        if (!hasEverLoaded) {
+            loadNow();
         }
     }
 
@@ -346,7 +396,11 @@ public class CoapNodeController {
             if (!isChild) {
                 c = client;
             } else {
-                c = controller.getClient(coapPath + "/" + Node.checkAndEncodeName(node.getName()));
+                try {
+                    c = controller.getClient(coapPath + "/" + CustomURLEncoder.encode(node.getName(), "UTF-8"));
+                } catch (UnsupportedEncodingException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             c.post(new CoapHandler() {
@@ -374,19 +428,25 @@ public class CoapNodeController {
             String type = data.get("type");
             ValueType valType = ValueType.toValueType(type);
             Parameter param = new Parameter(name, valType);
-            if (isCol) {
-                out.add(param);
-            } else {
-                String editor = data.get("editor");
-                if (editor != null) {
-                    param.setEditorType(EditorType.make(editor));
-                }
-                Object def = data.get("default");
-                if (def != null) {
-                    param.setDefaultValue(ValueUtils.toValue(def));
-                }
-                out.add(param);
+
+            String editor = data.get("editor");
+            if (editor != null) {
+                param.setEditorType(EditorType.make(editor));
             }
+            Object def = data.get("default");
+            if (def != null) {
+                param.setDefaultValue(ValueUtils.toValue(def));
+            }
+            String placeholder = data.get("placeholder");
+            if (placeholder != null) {
+                param.setPlaceHolder(placeholder);
+            }
+            String description = data.get("description");
+            if (description != null) {
+                param.setDescription(description);
+            }
+
+            out.add(param);
         }
 
         if (isCol) {
@@ -422,6 +482,7 @@ public class CoapNodeController {
 
         @Override
         public void onError() {
+            LOG.error("Error while handling COAP response for " + coapPath);
         }
     }
 }

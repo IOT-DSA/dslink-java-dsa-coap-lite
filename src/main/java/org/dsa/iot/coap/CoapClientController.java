@@ -40,75 +40,77 @@ public class CoapClientController {
     }
 
     public void init() throws Exception {
-        Objects.getDaemonThreadPool().schedule(new Runnable() {
-            @Override
-            public void run() {
-                if (!node.hasChild("_@remove")) {
-                    node
-                            .createChild("_@remove")
-                            .setDisplayName("Remove")
-                            .setSerializable(false)
-                            .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
-                            .build();
-                }
-
-                String url = node.getConfig("coap_url").getString();
-
-                try {
-                    uri = new URI(url);
-                    makeEndpoint();
-                } catch (URISyntaxException e) {
-                    LOG.error("Failed to parse COAP URL.", e);
-                    doError(e.getMessage());
-                }
-
-                try {
-                    if (!endpoint.isStarted()) {
-                        endpoint.start();
-                    }
-                } catch (IOException e) {
-                    LOG.error("Failed to start endpoint.", e);
-                    doError(e.getMessage());
-                }
-
-                try {
-                    CoapResponse root = getClient("/" + Constants.CONN).get();
-                    if (root == null || !root.isSuccess()) {
-                        root = getClient("/__root").get();
-
-                        if (root == null || !root.isSuccess()) {
-                            throw new Exception("Failed to connect.");
-                        }
-                    }
-
-                    JsonObject object = new JsonObject(EncodingFormat.MESSAGE_PACK, root.getPayload());
-
-                    if (!object.contains("dsa")) {
-                        throw new Exception("Not a DSA COAP Server.");
-                    }
-
-                    if (!object.get("dsa").toString().equals("1.0.0")) {
-                        throw new Exception("DSA-over-COAP v1.0.0 is the only protocol supported.");
-                    }
-                } catch (Exception e) {
-                    LOG.error("Failed to run DSA COAP handshake.", e);
-                    doError(e.getMessage());
-                    return;
-                }
-
-                CoapFakeNode liveNode = new CoapFakeNode(
-                        "broker",
-                        node,
-                        node.getLink(),
-                        CoapClientController.this,
-                        "/dsa"
-                );
-
-                node.addChild(liveNode);
-
-                CoapNodeController nodeController = new CoapNodeController(CoapClientController.this, liveNode, "/dsa");
-                nodeController.init();
+        Objects.getDaemonThreadPool().schedule(() -> {
+            if (!node.hasChild("_@remove")) {
+                node
+                        .createChild("_@remove")
+                        .setDisplayName("Remove")
+                        .setSerializable(false)
+                        .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
+                        .build();
             }
+
+            String url = node.getConfig("coap_url").getString();
+
+            try {
+                uri = new URI(url);
+                makeEndpoint();
+            } catch (URISyntaxException e) {
+                LOG.error("Failed to parse COAP URL.", e);
+                doError(e.getMessage());
+            }
+
+            try {
+                if (!endpoint.isStarted()) {
+                    endpoint.start();
+                }
+            } catch (IOException e) {
+                LOG.error("Failed to start endpoint.", e);
+                doError(e.getMessage());
+            }
+
+            try {
+                CoapResponse root = getClient("/" + Constants.CONN).get();
+                if (root == null || !root.isSuccess()) {
+                    root = getClient("/__root").get();
+
+                    if (root == null || !root.isSuccess()) {
+                        throw new Exception("Failed to connect.");
+                    }
+                }
+
+                JsonObject object = new JsonObject(EncodingFormat.MESSAGE_PACK, root.getPayload());
+
+                if (!object.contains("dsa")) {
+                    throw new Exception("Not a DSA COAP Server.");
+                }
+
+                if (!object.get("dsa").toString().equals("1.0.0")) {
+                    throw new Exception("DSA-over-COAP v1.0.0 is the only protocol supported.");
+                }
+            } catch (Exception e) {
+                LOG.error("Failed to run DSA COAP handshake.", e);
+                doError(e.getMessage());
+                return;
+            }
+
+            CoapFakeNode liveNode = new CoapFakeNode(
+                    "broker",
+                    node,
+                    node.getLink(),
+                    CoapClientController.this,
+                    "/dsa"
+            );
+
+            node.addChild(liveNode);
+
+            CoapNodeController nodeController = new CoapNodeController(
+                    CoapClientController.this,
+                    liveNode,
+                    "/dsa"
+            );
+            nodeController.init();
+            nodeController.loadIfNeeded();
         }, 1, TimeUnit.SECONDS);
     }
 
@@ -134,6 +136,7 @@ public class CoapClientController {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
             client.setExecutor(Objects.getThreadPool());
             client.setEndpoint(endpoint);
+            client.setTimeout(5000);
             clients.put(path, client);
         }
         return clients.get(path);

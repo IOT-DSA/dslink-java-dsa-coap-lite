@@ -72,6 +72,7 @@ public class NodeResource extends CoapResource {
     }
 
     private boolean isSynchronized = false;
+    private ScheduledFuture checkFuture;
 
     @Override
     public void handleGET(CoapExchange exchange) {
@@ -177,7 +178,11 @@ public class NodeResource extends CoapResource {
 
         count++;
 
-        check();
+        if (count == 1) {
+            check();
+        } else {
+            scheduleCheck();
+        }
     }
 
     @Override
@@ -186,7 +191,11 @@ public class NodeResource extends CoapResource {
 
         count++;
 
-        check();
+        if (count == 1) {
+            check();
+        } else {
+            scheduleCheck();
+        }
     }
 
     @Override
@@ -195,7 +204,7 @@ public class NodeResource extends CoapResource {
 
         count--;
 
-        check();
+        scheduleCheck();
     }
 
     @Override
@@ -204,11 +213,19 @@ public class NodeResource extends CoapResource {
 
         count--;
 
-        check();
+        scheduleCheck();
     }
 
     public String getDsaPath() {
         return nodePath;
+    }
+
+    public void scheduleCheck() {
+        if (checkFuture != null && !checkFuture.isDone()) {
+            return;
+        }
+
+        checkFuture = Objects.getThreadPool().schedule(this::check, 10, TimeUnit.MILLISECONDS);
     }
 
     public void check() {
