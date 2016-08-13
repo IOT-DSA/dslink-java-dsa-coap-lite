@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @SuppressWarnings("Duplicates")
 public class CoapNodeController {
@@ -49,7 +50,7 @@ public class CoapNodeController {
     private boolean isInitialized = false;
 
     public void init() {
-        if (isInitialized) {
+        if (isInitialized && client != null) {
             return;
         }
 
@@ -117,7 +118,10 @@ public class CoapNodeController {
                 if (key.equals("$is")) {
                     //node.setProfile(value.getString());
                 } else if (key.equals("$type")) {
-                    node.setValueType(ValueType.toValueType(value.getString()));
+                    ValueType type = ValueType.toValueType(value.getString());
+                    if (!type.equals(node.getValueType())) {
+                        node.setValueType(type);
+                    }
                 } else if (key.equals("$name")) {
                     node.setDisplayName(value.getString());
                 } else if (key.equals("$invokable")) {
@@ -160,7 +164,7 @@ public class CoapNodeController {
                 } else if (key.startsWith("@")) {
                     node.setAttribute(key.substring(1), value);
                 } else {
-                    Node child = node.getChild(key);
+                    Node child = ((CoapFakeNode) node).getCachedChild(key);
 
                     if (child == null) {
                         NodeBuilder builder = node.createChild(key);
@@ -224,7 +228,8 @@ public class CoapNodeController {
         }
 
         if (key.equals("$type")) {
-            n.setValueType(ValueType.toValueType(value.getString()));
+            ValueType type = ValueType.toValueType(value.getString());
+            n.setValueType(type);
         } else if (key.equals("$name")) {
             n.setDisplayName(value.getString());
         } else if (key.equals("$invokable")) {
@@ -269,7 +274,10 @@ public class CoapNodeController {
         }
 
         if (key.equals("$type")) {
-            n.setValueType(ValueType.toValueType(value.getString()));
+            ValueType type = ValueType.toValueType(value.getString());
+            if (!type.equals(n.getValueType())) {
+                n.setValueType(type);
+            }
         } else if (key.equals("$hasChildren")) {
             n.setHasChildren(value.getBool());
         } else if (key.equals("$password")) {
@@ -361,6 +369,11 @@ public class CoapNodeController {
             handler.onLoad(response);
         } else {
             LOG.warn("Loading eagerly failed for " + coapPath);
+            hasEverLoaded = false;
+            controller.getExecutor().schedule(() -> {
+                LOG.warn("Retrying eager loading for " + coapPath);
+                loadIfNeeded();
+            }, 2, TimeUnit.SECONDS);
         }
     }
 
@@ -418,13 +431,18 @@ public class CoapNodeController {
         });
     }
 
-    private static void iterateActionMetaData(Action act,
+    private void iterateActionMetaData(Action act,
                                               JsonArray array,
                                               boolean isCol) {
         ArrayList<Parameter> out = new ArrayList<>();
         for (Object anArray : array) {
             JsonObject data = (JsonObject) anArray;
             String name = data.get("name");
+
+            if (actionMetaContainsKey(array, name)) {
+                continue;
+            }
+
             String type = data.get("type");
             ValueType valType = ValueType.toValueType(type);
             Parameter param = new Parameter(name, valType);
@@ -454,6 +472,17 @@ public class CoapNodeController {
         } else {
             act.setParams(out);
         }
+    }
+
+    public boolean actionMetaContainsKey(JsonArray array, String name) {
+        for (Object obj : array) {
+            if (obj instanceof JsonObject) {
+                if (name.equals(((JsonObject) obj).get("name"))) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public class NodeCoapHandler implements CoapHandler {

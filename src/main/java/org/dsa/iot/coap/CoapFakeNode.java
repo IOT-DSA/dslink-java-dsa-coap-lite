@@ -76,6 +76,10 @@ public class CoapFakeNode extends Node {
         return b;
     }
 
+    public CoapFakeNode getCachedChild(String name) {
+        return (CoapFakeNode) super.getChild(name);
+    }
+
     public CoapClientController getController() {
         return controller;
     }

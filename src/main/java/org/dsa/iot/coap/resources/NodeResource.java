@@ -33,10 +33,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 public class NodeResource extends CoapResource {
     private static final Logger LOG = LoggerFactory.getLogger(NodeResource.class);
@@ -77,16 +74,23 @@ public class NodeResource extends CoapResource {
     @Override
     public void handleGET(CoapExchange exchange) {
         if (!isSynchronized) {
-            count++;
-            check();
-            latch = new CountDownLatch(1);
+            boolean syncing = latch != null && latch.isDone();
+            if (!syncing) {
+                count++;
+                check();
+            }
             try {
-                latch.await(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                if (latch == null || latch.isDone()) {
+                    latch = new CompletableFuture<>();
+                }
+                latch.get(10, TimeUnit.SECONDS);
+            } catch (InterruptedException | ExecutionException | TimeoutException ignored) {
             }
             isSynchronized = true;
-            count--;
+            if (!syncing) {
+                count--;
+                check();
+            }
         }
 
         JsonObject obj = new JsonObject(object);
@@ -242,7 +246,7 @@ public class NodeResource extends CoapResource {
         }
     }
 
-    private CountDownLatch latch;
+    private CompletableFuture<Object> latch;
 
     public class ListHandler implements Handler<ListResponse> {
         @Override
@@ -250,7 +254,7 @@ public class NodeResource extends CoapResource {
             isSynchronized = true;
 
             if (latch != null) {
-                latch.countDown();
+                latch.complete(null);
             }
 
             Requester requester = controller.getRequesterLink().getRequester();

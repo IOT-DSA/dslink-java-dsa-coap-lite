@@ -10,6 +10,7 @@ import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.EncodingFormat;
 import org.dsa.iot.dslink.util.json.JsonObject;
+import org.dsa.iot.shared.SharedObjects;
 import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.network.CoapEndpoint;
@@ -20,9 +21,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class CoapClientController {
@@ -33,20 +35,32 @@ public class CoapClientController {
 
     public CoapClientController(Node node) {
         this.node = node;
+        executor.setMaximumPoolSize(128);
+        executor.setKeepAliveTime(2, TimeUnit.MINUTES);
     }
 
     public Node getNode() {
         return node;
     }
 
-    public void init() throws Exception {
-        Objects.getDaemonThreadPool().schedule(() -> {
-            if (!node.hasChild("_@remove")) {
+    public void init() {
+        connectionFuture = Objects.getDaemonThreadPool().schedule(() -> {
+            if (!node.hasChild("remove")) {
                 node
-                        .createChild("_@remove")
+                        .createChild("remove")
                         .setDisplayName("Remove")
                         .setSerializable(false)
                         .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
+                        .build();
+            }
+
+            if (!node.hasChild("status")) {
+                node
+                        .createChild("status")
+                        .setDisplayName("Status")
+                        .setSerializable(false)
+                        .setValueType(ValueType.STRING)
+                        .setValue(new Value("Unknown"))
                         .build();
             }
 
@@ -111,6 +125,7 @@ public class CoapClientController {
             );
             nodeController.init();
             nodeController.loadIfNeeded();
+            node.getChild("status").setValue(new Value("Ready"));
         }, 1, TimeUnit.SECONDS);
     }
 
@@ -122,7 +137,7 @@ public class CoapClientController {
         }
 
         endpoint = new CoapEndpoint();
-        endpoint.setExecutor(Objects.getThreadPool());
+        endpoint.setExecutor(executor);
 
         for (CoapClient client : clients.values()) {
             client.setEndpoint(endpoint);
@@ -130,13 +145,14 @@ public class CoapClientController {
     }
 
     private Endpoint endpoint;
+    private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
 
     public CoapClient getClient(final String path) {
-        if (!clients.containsKey(path)) {
+        if (clients.get(path) == null) {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
-            client.setExecutor(Objects.getThreadPool());
+            client.setExecutor(executor);
             client.setEndpoint(endpoint);
-            client.setTimeout(5000);
+            client.setTimeout(10000);
             clients.put(path, client);
         }
         return clients.get(path);
@@ -145,22 +161,28 @@ public class CoapClientController {
     private Map<String, CoapClient> clients = new HashMap<>();
 
     public void doError(String msg) {
-        node.clearChildren();
+        node.removeChild("broker");
 
-        node
-                .createChild("error")
-                .setSerializable(false)
-                .setDisplayName("Error")
-                .setValueType(ValueType.STRING)
-                .setValue(new Value(msg))
-                .build();
+        node.getChild("status").setValue(new Value(msg));
+
+        connectionFuture = Objects.getDaemonThreadPool().schedule(this::init, 2, TimeUnit.SECONDS);
+    }
+
+    private ScheduledFuture connectionFuture;
+
+    public ScheduledThreadPoolExecutor getExecutor() {
+        return executor;
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
         @Override
         public void handle(ActionResult event) {
-            for (CoapClient client : Collections.unmodifiableCollection(clients.values())) {
-                client.shutdown();
+            if (connectionFuture != null && !connectionFuture.isDone()) {
+                connectionFuture.cancel(true);
+            }
+
+            if (endpoint != null) {
+                endpoint.destroy();
             }
 
             node.delete();
