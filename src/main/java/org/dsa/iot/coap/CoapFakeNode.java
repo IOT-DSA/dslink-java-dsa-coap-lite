@@ -3,10 +3,14 @@ package org.dsa.iot.coap;
 import org.dsa.iot.dslink.link.Linkable;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
 
 public class CoapFakeNode extends Node {
+    private static final Logger LOG = LoggerFactory.getLogger(CoapFakeNode.class);
+
     private CoapClientController controller;
 
     public String getCoapPath() {
@@ -20,17 +24,15 @@ public class CoapFakeNode extends Node {
 
         this.controller = controller;
         this.coapPath = coapPath;
+        LOG.debug("Created node at " + getPath());
     }
 
     @Override
     public Node getChild(String name) {
-        Node child = super.getChild(name);
-        if (child == null) {
-            child = createChild(name).build();
-        }
+        CoapFakeNode child = getCachedChild(name);
 
-        if (!(child instanceof CoapFakeNode)) {
-            return child;
+        if (child == null) {
+            child = (CoapFakeNode) createChild(name).build();
         }
 
         CoapNodeController nodeController = child.getMetaData();
@@ -39,7 +41,7 @@ public class CoapFakeNode extends Node {
             nodeController = new CoapNodeController(
                     controller,
                     child,
-                    ((CoapFakeNode) child).coapPath
+                    child.coapPath
             );
 
             nodeController.init();

@@ -1,6 +1,7 @@
 package org.dsa.iot.coap;
 
 import org.dsa.iot.coap.utils.Tables;
+import org.dsa.iot.coap.utils.Values;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
 import org.dsa.iot.dslink.node.Permission;
@@ -123,11 +124,15 @@ public class CoapNodeController {
                         node.setValueType(type);
                     }
                 } else if (key.equals("$name")) {
-                    node.setDisplayName(value.getString());
+                    if (node.getDisplayName() == null || !node.getDisplayName().equals(value.getString())) {
+                        node.setDisplayName(value.getString());
+                    }
                 } else if (key.equals("$invokable")) {
                     Permission perm = Permission.toEnum(value.getString());
                     Action act = getOrCreateAction(node, perm, false);
-                    act.setPermission(perm);
+                    if (act.getPermission() == null || !act.getPermission().getJsonName().equals(perm.getJsonName())) {
+                        act.setPermission(perm);
+                    }
                 } else if (key.equals("$columns")) {
                     if (mvalue instanceof JsonArray) {
                         JsonArray array = (JsonArray) mvalue;
@@ -136,7 +141,9 @@ public class CoapNodeController {
                     }
                 } else if (key.equals("$writable")) {
                     String string = value.getString();
-                    node.setWritable(Writable.toEnum(string));
+                    if (node.getWritable() == null || !node.getWritable().toJsonName().equals(string)) {
+                        node.setWritable(Writable.toEnum(string));
+                    }
                 } else if (key.equals("$params")) {
                     if (mvalue instanceof JsonArray) {
                         JsonArray array = (JsonArray) mvalue;
@@ -148,7 +155,9 @@ public class CoapNodeController {
                 } else if (key.equals("$result")) {
                     String string = value.getString();
                     Action act = getOrCreateAction(node, Permission.NONE, false);
-                    act.setResultType(ResultType.toEnum(string));
+                    if (act.getResultType() == null || !act.getResultType().getJsonName().equals(string)) {
+                        act.setResultType(ResultType.toEnum(string));
+                    }
                 } else if (key.equals("$$password")) {
                     if (value.getString() != null) {
                         node.setPassword(value.getString().toCharArray());
@@ -156,13 +165,24 @@ public class CoapNodeController {
                         node.setPassword(null);
                     }
                 } else if (key.equals("$hasChildren")) {
-                    node.setHasChildren(value.getBool());
+                    if (value.getBool() != node.getHasChildren()) {
+                        node.setHasChildren(value.getBool());
+                    }
                 } else if (key.startsWith("$$")) {
-                    node.setRoConfig(key.substring(2), value);
+                    String cname = key.substring(2);
+                    if (!Values.isEqual(value, node.getRoConfig(cname))) {
+                        node.setRoConfig(cname, value);
+                    }
                 } else if (key.startsWith("$")) {
-                    node.setConfig(key.substring(1), value);
+                    String cname = key.substring(1);
+                    if (!Values.isEqual(value, node.getConfig(cname))) {
+                        node.setConfig(cname, value);
+                    }
                 } else if (key.startsWith("@")) {
-                    node.setAttribute(key.substring(1), value);
+                    String cname = key.substring(1);
+                    if (!Values.isEqual(value, node.getAttribute(cname))) {
+                        node.setAttribute(cname, value);
+                    }
                 } else {
                     Node child = ((CoapFakeNode) node).getCachedChild(key);
 
@@ -184,6 +204,7 @@ public class CoapNodeController {
                         );
 
                         nodeController.init();
+                        node.addChild(child);
                     } else {
                         if (mvalue instanceof JsonObject) {
                             JsonObject co = (JsonObject) mvalue;
@@ -287,11 +308,15 @@ public class CoapNodeController {
                 n.setPassword(null);
             }
         } else if (key.equals("$name")) {
-            n.setDisplayName(value.getString());
+            if (n.getDisplayName() == null || !n.getDisplayName().equals(value.getString())) {
+                n.setDisplayName(value.getString());
+            }
         } else if (key.equals("$invokable")) {
             Permission perm = Permission.toEnum(value.getString());
             Action act = getOrCreateAction(n, perm, isChild);
-            act.setPermission(perm);
+            if (act.getPermission() == null || !act.getPermission().getJsonName().equals(perm.getJsonName())) {
+                act.setPermission(perm);
+            }
         } else if (key.equals("$columns")) {
             JsonArray array = (JsonArray) mvalue;
             Action act = getOrCreateAction(n, Permission.NONE, isChild);
@@ -310,13 +335,27 @@ public class CoapNodeController {
             Action act = getOrCreateAction(n, Permission.NONE, isChild);
             act.setResultType(ResultType.toEnum(string));
         } else if (key.startsWith("$$")) {
-            n.setRoConfig(key.substring(2), value);
+            String cname = key.substring(2);
+            Value lastValue = node.getRoConfig(cname);
+
+            if (!Values.isEqual(value, lastValue)) {
+                node.setRoConfig(cname, value);
+            }
         } else if (key.startsWith("$")) {
             if (!key.equals("$is")) {
-                n.setConfig(key.substring(1), value);
+                String cname = key.substring(1);
+                Value lastValue = node.getConfig(cname);
+
+                if (!Values.isEqual(value, lastValue)) {
+                    node.setConfig(cname, value);
+                }
             }
         } else if (key.startsWith("@")) {
-            n.setAttribute(key.substring(1), value);
+            String cname = key.substring(1);
+            Value lastValue = node.getAttribute(cname);
+            if (!Values.isEqual(value, lastValue)) {
+                node.setAttribute(cname, value);
+            }
         }
     }
 
@@ -439,7 +478,7 @@ public class CoapNodeController {
             JsonObject data = (JsonObject) anArray;
             String name = data.get("name");
 
-            if (actionMetaContainsKey(array, name)) {
+            if (out.stream().anyMatch((c) -> c.getName().equals(name))) {
                 continue;
             }
 
@@ -467,22 +506,13 @@ public class CoapNodeController {
             out.add(param);
         }
 
-        if (isCol) {
-            act.setColumns(out);
-        } else {
-            act.setParams(out);
-        }
-    }
-
-    public boolean actionMetaContainsKey(JsonArray array, String name) {
-        for (Object obj : array) {
-            if (obj instanceof JsonObject) {
-                if (name.equals(((JsonObject) obj).get("name"))) {
-                    return true;
-                }
+        if (!out.isEmpty()) {
+            if (isCol) {
+                act.setColumns(out);
+            } else {
+                act.setParams(out);
             }
         }
-        return false;
     }
 
     public class NodeCoapHandler implements CoapHandler {

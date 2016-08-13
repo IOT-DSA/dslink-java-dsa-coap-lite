@@ -7,13 +7,14 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.ActionResult;
+import org.dsa.iot.dslink.node.value.Value;
+import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.eclipse.californium.core.CoapServer;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.EndpointManager;
 
 import java.net.Inet4Address;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 public class CoapServerController {
@@ -28,14 +29,25 @@ public class CoapServerController {
     }
 
     public void init() {
-        if (!node.hasChild("_@remove")) {
+        if (!node.hasChild("remove")) {
             node
-                    .createChild("_@remove")
+                    .createChild("remove")
                     .setDisplayName("Remove")
                     .setSerializable(false)
                     .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
                     .build();
         }
+
+        if (!node.hasChild("status")) {
+            node
+                    .createChild("status")
+                    .setDisplayName("Status")
+                    .setSerializable(false)
+                    .setValueType(ValueType.STRING)
+                    .build();
+        }
+
+        stat("Server Setup");
 
         port = node.getConfig("coap_port").getNumber().intValue();
         server = new CoapServer();
@@ -47,16 +59,23 @@ public class CoapServerController {
         server.add(rootNode);
 
         server.start();
+        stat("Server Started");
+    }
+
+    public void stat(String name) {
+        Node statusNode = node.getChild("status");
+        if (statusNode != null) {
+            statusNode.setValue(new Value(name));
+        }
     }
 
     private void addEndpoints() {
-        for (InetAddress addr : EndpointManager.getEndpointManager().getNetworkInterfaces()) {
-            // only binds to IPv4 addresses and localhost
-            if (addr instanceof Inet4Address || addr.isLoopbackAddress()) {
-                InetSocketAddress bindToAddress = new InetSocketAddress(addr, port);
-                server.addEndpoint(new CoapEndpoint(bindToAddress));
-            }
-        }
+        EndpointManager.getEndpointManager().getNetworkInterfaces().stream()
+                .filter(addr -> addr instanceof Inet4Address || addr.isLoopbackAddress())
+                .forEach(addr -> {
+            InetSocketAddress bindToAddress = new InetSocketAddress(addr, port);
+            server.addEndpoint(new CoapEndpoint(bindToAddress));
+        });
     }
 
     public DSLink getRequesterLink() {
