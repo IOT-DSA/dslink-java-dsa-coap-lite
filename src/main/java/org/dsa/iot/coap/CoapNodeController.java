@@ -78,6 +78,16 @@ public class CoapNodeController {
             handles--;
             checkHandles();
         });
+
+        if (node.getLink().getSubscriptionManager().hasValueSub(node)) {
+            handles++;
+            checkHandles();
+        }
+
+        if (node.getLink().getSubscriptionManager().hasPathSub(node)) {
+            handles++;
+            checkHandles();
+        }
     }
 
     public void checkHandles() {
