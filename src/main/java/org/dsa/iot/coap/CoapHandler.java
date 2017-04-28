@@ -43,9 +43,9 @@ public class CoapHandler extends DSLinkHandler {
     public Node checkRootNode(DSLink link) {
         Node rootNode = link.getNodeManager().getSuperRoot();
 
-        if (!rootNode.hasChild("createCoapClient")) {
+        if (!rootNode.hasChild("createCoapClient", false)) {
             rootNode
-                    .createChild("createCoapClient")
+                    .createChild("createCoapClient", false)
                     .setDisplayName("Create COAP Client")
                     .setSerializable(false)
                     .setAction(
@@ -56,9 +56,9 @@ public class CoapHandler extends DSLinkHandler {
                     .build();
         }
 
-        if (!rootNode.hasChild("createCoapServer")) {
+        if (!rootNode.hasChild("createCoapServer", false)) {
             rootNode
-                    .createChild("createCoapServer")
+                    .createChild("createCoapServer", false)
                     .setDisplayName("Create COAP Server")
                     .setSerializable(false)
                     .setAction(
@@ -108,7 +108,7 @@ public class CoapHandler extends DSLinkHandler {
             controller.init();
         } catch (Exception e) {
             LOG.error("Failed to setup COAP client.", e);
-            node.getParent().removeChild(node);
+            node.getParent().removeChild(node, false);
         }
     }
 
@@ -120,7 +120,7 @@ public class CoapHandler extends DSLinkHandler {
             controller.init();
         } catch (Exception e) {
             LOG.error("Failed to setup COAP server.", e);
-            node.getParent().removeChild(node);
+            node.getParent().removeChild(node, false);
         }
     }
 

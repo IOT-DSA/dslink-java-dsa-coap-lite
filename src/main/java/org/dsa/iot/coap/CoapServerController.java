@@ -29,18 +29,18 @@ public class CoapServerController {
     }
 
     public void init() {
-        if (!node.hasChild("remove")) {
+        if (!node.hasChild("remove", false)) {
             node
-                    .createChild("remove")
+                    .createChild("remove", false)
                     .setDisplayName("Remove")
                     .setSerializable(false)
                     .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
                     .build();
         }
 
-        if (!node.hasChild("status")) {
+        if (!node.hasChild("status", false)) {
             node
-                    .createChild("status")
+                    .createChild("status", false)
                     .setDisplayName("Status")
                     .setSerializable(false)
                     .setValueType(ValueType.STRING)
@@ -63,7 +63,7 @@ public class CoapServerController {
     }
 
     public void stat(String name) {
-        Node statusNode = node.getChild("status");
+        Node statusNode = node.getChild("status", false);
         if (statusNode != null) {
             statusNode.setValue(new Value(name));
         }
@@ -93,7 +93,7 @@ public class CoapServerController {
                 server.stop();
             }
 
-            node.delete();
+            node.delete(false);
         }
     }
 }

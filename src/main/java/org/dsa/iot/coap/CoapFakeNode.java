@@ -28,11 +28,11 @@ public class CoapFakeNode extends Node {
     }
 
     @Override
-    public Node getChild(String name) {
-        CoapFakeNode child = getCachedChild(name);
+    public Node getChild(String name, boolean encodeName) {
+        CoapFakeNode child = getCachedChild(name, encodeName);
 
         if (child == null) {
-            child = (CoapFakeNode) createChild(name).build();
+            child = (CoapFakeNode) createChild(name, encodeName).build();
         }
 
         CoapNodeController nodeController = child.getMetaData();
@@ -53,7 +53,7 @@ public class CoapFakeNode extends Node {
     }
 
     @Override
-    public boolean hasChild(String name) {
+    public boolean hasChild(String name, boolean encodeName) {
         return true;
     }
 
@@ -78,8 +78,8 @@ public class CoapFakeNode extends Node {
         return b;
     }
 
-    public CoapFakeNode getCachedChild(String name) {
-        return (CoapFakeNode) super.getChild(name);
+    public CoapFakeNode getCachedChild(String name, boolean encodeName) {
+        return (CoapFakeNode) super.getChild(name, encodeName);
     }
 
     public CoapClientController getController() {

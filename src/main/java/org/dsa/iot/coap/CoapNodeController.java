@@ -194,10 +194,10 @@ public class CoapNodeController {
                         node.setAttribute(cname, value);
                     }
                 } else {
-                    Node child = ((CoapFakeNode) node).getCachedChild(key);
+                    Node child = ((CoapFakeNode) node).getCachedChild(key, false);
 
                     if (child == null) {
-                        NodeBuilder builder = node.createChild(key);
+                        NodeBuilder builder = node.createChild(key, false);
                         if (mvalue instanceof JsonObject) {
                             JsonObject co = (JsonObject) mvalue;
                             for (Map.Entry<String, Object> entry : co) {
@@ -239,7 +239,7 @@ public class CoapNodeController {
                         node.removeAttribute(key.substring(1));
                     } else {
                         try {
-                            node.removeChild(CustomURLEncoder.encode(key, "UTF-8"));
+                            node.removeChild(CustomURLEncoder.encode(key, "UTF-8"), false);
                         } catch (UnsupportedEncodingException e) {
                             e.printStackTrace();
                         }

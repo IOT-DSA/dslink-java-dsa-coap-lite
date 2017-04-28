@@ -45,18 +45,18 @@ public class CoapClientController {
 
     public void init() {
         connectionFuture = Objects.getDaemonThreadPool().schedule(() -> {
-            if (!node.hasChild("remove")) {
+            if (!node.hasChild("remove", false)) {
                 node
-                        .createChild("remove")
+                        .createChild("remove", false)
                         .setDisplayName("Remove")
                         .setSerializable(false)
                         .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
                         .build();
             }
 
-            if (!node.hasChild("status")) {
+            if (!node.hasChild("status", false)) {
                 node
-                        .createChild("status")
+                        .createChild("status", false)
                         .setDisplayName("Status")
                         .setSerializable(false)
                         .setValueType(ValueType.STRING)
@@ -125,7 +125,7 @@ public class CoapClientController {
             );
             nodeController.init();
             nodeController.loadIfNeeded();
-            node.getChild("status").setValue(new Value("Ready"));
+            node.getChild("status", false).setValue(new Value("Ready"));
         }, 1, TimeUnit.SECONDS);
     }
 
@@ -161,9 +161,9 @@ public class CoapClientController {
     private Map<String, CoapClient> clients = new HashMap<>();
 
     public void doError(String msg) {
-        node.removeChild("broker");
+        node.removeChild("broker", false);
 
-        node.getChild("status").setValue(new Value(msg));
+        node.getChild("status", false).setValue(new Value(msg));
 
         connectionFuture = Objects.getDaemonThreadPool().schedule(this::init, 2, TimeUnit.SECONDS);
     }
@@ -185,7 +185,7 @@ public class CoapClientController {
                 endpoint.destroy();
             }
 
-            node.delete();
+            node.delete(false);
         }
     }
 }
