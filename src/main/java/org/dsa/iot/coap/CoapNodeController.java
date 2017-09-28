@@ -1,5 +1,9 @@
 package org.dsa.iot.coap;
 
+import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.dsa.iot.coap.utils.Tables;
 import org.dsa.iot.coap.utils.Values;
 import org.dsa.iot.dslink.node.Node;
@@ -23,13 +27,9 @@ import org.eclipse.californium.core.CoapResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-
 @SuppressWarnings("Duplicates")
 public class CoapNodeController {
+
     private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
 
     private CoapClientController controller;
@@ -134,13 +134,15 @@ public class CoapNodeController {
                         node.setValueType(type);
                     }
                 } else if (key.equals("$name")) {
-                    if (node.getDisplayName() == null || !node.getDisplayName().equals(value.getString())) {
+                    if (node.getDisplayName() == null || !node.getDisplayName()
+                                                              .equals(value.getString())) {
                         node.setDisplayName(value.getString());
                     }
                 } else if (key.equals("$invokable")) {
                     Permission perm = Permission.toEnum(value.getString());
                     Action act = getOrCreateAction(node, perm, false);
-                    if (act.getPermission() == null || !act.getPermission().getJsonName().equals(perm.getJsonName())) {
+                    if (act.getPermission() == null || !act.getPermission().getJsonName()
+                                                           .equals(perm.getJsonName())) {
                         act.setPermission(perm);
                     }
                 } else if (key.equals("$columns")) {
@@ -151,7 +153,8 @@ public class CoapNodeController {
                     }
                 } else if (key.equals("$writable")) {
                     String string = value.getString();
-                    if (node.getWritable() == null || !node.getWritable().toJsonName().equals(string)) {
+                    if (node.getWritable() == null || !node.getWritable().toJsonName()
+                                                           .equals(string)) {
                         node.setWritable(Writable.toEnum(string));
                     }
                 } else if (key.equals("$params")) {
@@ -165,7 +168,8 @@ public class CoapNodeController {
                 } else if (key.equals("$result")) {
                     String string = value.getString();
                     Action act = getOrCreateAction(node, Permission.NONE, false);
-                    if (act.getResultType() == null || !act.getResultType().getJsonName().equals(string)) {
+                    if (act.getResultType() == null || !act.getResultType().getJsonName()
+                                                           .equals(string)) {
                         act.setResultType(ResultType.toEnum(string));
                     }
                 } else if (key.equals("$$password")) {
@@ -324,7 +328,8 @@ public class CoapNodeController {
         } else if (key.equals("$invokable")) {
             Permission perm = Permission.toEnum(value.getString());
             Action act = getOrCreateAction(n, perm, isChild);
-            if (act.getPermission() == null || !act.getPermission().getJsonName().equals(perm.getJsonName())) {
+            if (act.getPermission() == null || !act.getPermission().getJsonName()
+                                                   .equals(perm.getJsonName())) {
                 act.setPermission(perm);
             }
         } else if (key.equals("$columns")) {
@@ -459,7 +464,8 @@ public class CoapNodeController {
                 c = client;
             } else {
                 try {
-                    c = controller.getClient(coapPath + "/" + CustomURLEncoder.encode(node.getName(), "UTF-8"));
+                    c = controller.getClient(
+                            coapPath + "/" + CustomURLEncoder.encode(node.getName(), "UTF-8"));
                 } catch (UnsupportedEncodingException e) {
                     throw new RuntimeException(e);
                 }
@@ -468,7 +474,8 @@ public class CoapNodeController {
             c.post(new CoapHandler() {
                 @Override
                 public void onLoad(CoapResponse response) {
-                    JsonObject obj = new JsonObject(EncodingFormat.MESSAGE_PACK, response.getPayload());
+                    JsonObject obj = new JsonObject(EncodingFormat.MESSAGE_PACK,
+                                                    response.getPayload());
                     Tables.decodeFullTable(event.getTable(), obj);
                     event.getTable().close();
                 }
@@ -481,8 +488,8 @@ public class CoapNodeController {
     }
 
     private void iterateActionMetaData(Action act,
-                                              JsonArray array,
-                                              boolean isCol) {
+                                       JsonArray array,
+                                       boolean isCol) {
         ArrayList<Parameter> out = new ArrayList<>();
         for (Object anArray : array) {
             JsonObject data = (JsonObject) anArray;
@@ -526,6 +533,7 @@ public class CoapNodeController {
     }
 
     public class NodeCoapHandler implements CoapHandler {
+
         @Override
         public void onLoad(CoapResponse response) {
             if (response == null) {
@@ -533,7 +541,8 @@ public class CoapNodeController {
             }
 
             try {
-                JsonObject resp = new JsonObject(EncodingFormat.MESSAGE_PACK, response.getPayload());
+                JsonObject resp = new JsonObject(EncodingFormat.MESSAGE_PACK,
+                                                 response.getPayload());
                 JsonArray listArray = resp.get("list");
                 JsonArray valueArray = resp.get("value");
 

@@ -1,14 +1,14 @@
 package org.dsa.iot.coap;
 
+import java.io.UnsupportedEncodingException;
 import org.dsa.iot.dslink.link.Linkable;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
-
 public class CoapFakeNode extends Node {
+
     private static final Logger LOG = LoggerFactory.getLogger(CoapFakeNode.class);
 
     private CoapClientController controller;
@@ -19,8 +19,12 @@ public class CoapFakeNode extends Node {
 
     private String coapPath;
 
-    public CoapFakeNode(String name, Node parent, Linkable link, CoapClientController controller, String coapPath) {
-        super(name, parent, link);
+    public CoapFakeNode(String name, Node parent,
+                        Linkable link,
+                        CoapClientController controller,
+                        String coapPath,
+                        boolean encodeName) {
+        super(name, parent, link, encodeName);
 
         this.controller = controller;
         this.coapPath = coapPath;
@@ -58,7 +62,16 @@ public class CoapFakeNode extends Node {
     }
 
     @Override
+    public NodeBuilder createChild(String name, boolean encodeName) {
+        return createChild(name, null, encodeName);
+    }
+
+    @Override
     public NodeBuilder createChild(String name, String profile) {
+        return createChild(name, profile, false);
+    }
+
+    public NodeBuilder createChild(String name, String profile, boolean encodeName) {
         NodeBuilder b = null;
         try {
             b = new NodeBuilder(this, new CoapFakeNode(
@@ -66,7 +79,8 @@ public class CoapFakeNode extends Node {
                     this,
                     getLink(),
                     controller,
-                    coapPath + "/" + CustomURLEncoder.encode(name, "UTF-8").replaceAll(" ", "%20")
+                    coapPath + "/" + CustomURLEncoder.encode(name, "UTF-8").replaceAll(" ", "%20"),
+                    encodeName
             ));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
