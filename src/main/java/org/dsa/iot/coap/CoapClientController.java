@@ -1,5 +1,13 @@
 package org.dsa.iot.coap;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -18,16 +26,8 @@ import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-
 public class CoapClientController {
+
     private static final Logger LOG = LoggerFactory.getLogger(CoapClientController.class);
 
     private Node node;
@@ -113,7 +113,8 @@ public class CoapClientController {
                     node,
                     node.getLink(),
                     CoapClientController.this,
-                    "/dsa"
+                    "/dsa",
+                    false
             );
 
             node.addChild(liveNode);
@@ -175,6 +176,7 @@ public class CoapClientController {
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
+
         @Override
         public void handle(ActionResult event) {
             if (connectionFuture != null && !connectionFuture.isDone()) {
