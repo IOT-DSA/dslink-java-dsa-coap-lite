@@ -1,6 +1,6 @@
 {
   "name": "dslink-java-dsa-coap",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "DSA-over-COAP",
   "license": "Apache",
   "author": {
