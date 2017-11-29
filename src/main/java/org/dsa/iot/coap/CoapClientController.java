@@ -44,7 +44,7 @@ public class CoapClientController {
      * Sleeps the thread until this CoapClient is ready to go
      */
     public void waitForConnection() {
-        while (!connectionFuture.isDone()) {
+        while (connectionFuture != null && !connectionFuture.isDone()) {
             try {
                 TimeUnit.SECONDS.sleep(1);
             } catch (InterruptedException e) {

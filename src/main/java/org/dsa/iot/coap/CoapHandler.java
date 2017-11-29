@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,8 +29,10 @@ public class CoapHandler extends DSLinkHandler {
     private Node rootNode;
     private DSLink requesterLink;
     private DSLink responderLink;
+    private HashSet<String>pathHash = new HashSet<>();
 
     private void tryToCreatePath(String path) {
+        pathHash.add(path);
         Node thisNode = rootNode;
         boolean superRoot = true;
         for (String n : path.split("/")) {
@@ -84,7 +87,7 @@ public class CoapHandler extends DSLinkHandler {
                         JsonArray paths = json.get("paths");
                         for (Object path : paths) {
                             String p = ((JsonObject) path).get("path");
-                            tryToCreatePath(p);
+                            if (!pathHash.contains(p)) tryToCreatePath(p);
                         }
                     }
 
