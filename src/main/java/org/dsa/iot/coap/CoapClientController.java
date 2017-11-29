@@ -1,13 +1,5 @@
 package org.dsa.iot.coap;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -26,6 +18,15 @@ import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
 public class CoapClientController {
 
     private static final Logger LOG = LoggerFactory.getLogger(CoapClientController.class);
@@ -37,6 +38,19 @@ public class CoapClientController {
         this.node = node;
         executor.setMaximumPoolSize(128);
         executor.setKeepAliveTime(2, TimeUnit.MINUTES);
+    }
+
+    /**
+     * Sleeps the thread until this CoapClient is ready to go
+     */
+    public void waitForConnection() {
+        while (!connectionFuture.isDone()) {
+            try {
+                TimeUnit.SECONDS.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public Node getNode() {

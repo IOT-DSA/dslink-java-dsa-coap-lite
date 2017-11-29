@@ -1,7 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'application'
 
-version '0.0.4'
+version '0.0.4.2'
 
 mainClassName = 'org.dsa.iot.coap.Main'
 sourceCompatibility = 1.8
@@ -23,7 +23,8 @@ dependencies {
     compile 'org.iot-dsa:dslink:0.+'
     compile 'org.iot-dsa:commons:0.+'
     compile 'org.iot-dsa:historian:0.+'
-    compile 'org.eclipse.californium:californium-core:2.0.0-M1'
+    //compile 'org.eclipse.californium:californium-core:+'
+    compile 'org.eclipse.californium:californium-core:2.0.0-M2'
 }
 
 tasks.withType(FindBugs) {

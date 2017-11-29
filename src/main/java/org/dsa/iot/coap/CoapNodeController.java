@@ -90,6 +90,16 @@ public class CoapNodeController {
         }
     }
 
+    /**
+     * Kinda lists the node.
+     */
+    public void kindaList() {
+        handles++;
+        checkHandles();
+        handles--;
+        checkHandles();
+    }
+
     public void checkHandles() {
         if (handles <= 0 && hasHandle) {
             closeHandles();
