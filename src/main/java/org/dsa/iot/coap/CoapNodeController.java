@@ -27,7 +27,6 @@ import org.eclipse.californium.core.CoapResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@SuppressWarnings("Duplicates")
 public class CoapNodeController {
 
     private static final Logger LOG = LoggerFactory.getLogger(CoapNodeController.class);
@@ -39,6 +38,12 @@ public class CoapNodeController {
     private CoapClient client;
     private String coapPath;
 
+    private boolean isInitialized = false;
+
+    private CoapObserveRelation relation;
+
+    private boolean hasEverLoaded = false;
+
     public CoapNodeController(CoapClientController controller, Node node, String coapPath) {
         this.controller = controller;
         this.node = node;
@@ -47,8 +52,6 @@ public class CoapNodeController {
         node.setSerializable(false);
         node.setMetaData(this);
     }
-
-    private boolean isInitialized = false;
 
     public void init() {
         if (isInitialized && client != null) {
@@ -108,8 +111,6 @@ public class CoapNodeController {
             startHandles();
         }
     }
-
-    private CoapObserveRelation relation;
 
     public void updateListData(JsonArray listArray) {
         for (Object o : listArray) {
@@ -419,8 +420,6 @@ public class CoapNodeController {
         }
     }
 
-    private boolean hasEverLoaded = false;
-
     public void loadNow() {
         hasEverLoaded = true;
 
@@ -553,14 +552,17 @@ public class CoapNodeController {
             try {
                 JsonObject resp = new JsonObject(EncodingFormat.MESSAGE_PACK,
                                                  response.getPayload());
+                System.out.println("onLoadResponse: " + resp);
                 JsonArray listArray = resp.get("list");
                 JsonArray valueArray = resp.get("value");
 
                 if (listArray != null) {
+                    System.out.println("CoapHandlerList: " + listArray); //DEBUG
                     updateListData(listArray);
                 }
 
                 if (valueArray != null) {
+                    System.out.println("CoapHandlerValue: " + valueArray); //DEBUG
                     updateValueData(valueArray);
                 }
             } catch (Exception e) {

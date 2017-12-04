@@ -21,9 +21,9 @@ public class CoapServerController {
     private Node node;
     public CoapServer server;
     private int port;
-    private CoapHandler handler;
+    private CoapLinkHandler handler;
 
-    public CoapServerController(Node node, CoapHandler handler) {
+    public CoapServerController(Node node, CoapLinkHandler handler) {
         this.node = node;
         this.handler = handler;
     }

@@ -34,49 +34,46 @@ public class CoapClientController {
     private Node node;
     private URI uri;
 
+    private Endpoint endpoint;
+    private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
+
+    private ScheduledFuture connectionFuture;
+
+    private Map<String, CoapClient> clients = new HashMap<>();
+
     public CoapClientController(Node node) {
         this.node = node;
         executor.setMaximumPoolSize(128);
         executor.setKeepAliveTime(2, TimeUnit.MINUTES);
     }
 
-    /**
-     * Sleeps the thread until this CoapClient is ready to go
-     */
-    public void waitForConnection() {
-        while (connectionFuture != null && !connectionFuture.isDone()) {
-            try {
-                TimeUnit.SECONDS.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public Node getNode() {
         return node;
     }
 
-    public void init() {
-        connectionFuture = Objects.getDaemonThreadPool().schedule(() -> {
-            if (!node.hasChild("remove", false)) {
-                node
-                        .createChild("remove", false)
-                        .setDisplayName("Remove")
-                        .setSerializable(false)
-                        .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
-                        .build();
-            }
+    private void initNodes() {
+        if (!node.hasChild("remove", false)) {
+            node
+                    .createChild("remove", false)
+                    .setDisplayName("Remove")
+                    .setSerializable(false)
+                    .setAction(new Action(Permission.WRITE, new DeleteCoapClientAction()))
+                    .build();
+        }
 
-            if (!node.hasChild("status", false)) {
-                node
-                        .createChild("status", false)
-                        .setDisplayName("Status")
-                        .setSerializable(false)
-                        .setValueType(ValueType.STRING)
-                        .setValue(new Value("Unknown"))
-                        .build();
-            }
+        if (!node.hasChild("status", false)) {
+            node
+                    .createChild("status", false)
+                    .setDisplayName("Status")
+                    .setSerializable(false)
+                    .setValueType(ValueType.STRING)
+                    .setValue(new Value("Unknown"))
+                    .build();
+        }
+    }
+
+    public void init() {
+            initNodes();
 
             String url = node.getConfig("coap_url").getString();
 
@@ -141,7 +138,6 @@ public class CoapClientController {
             nodeController.init();
             nodeController.loadIfNeeded();
             node.getChild("status", false).setValue(new Value("Ready"));
-        }, 1, TimeUnit.SECONDS);
     }
 
     private void makeEndpoint() {
@@ -159,10 +155,8 @@ public class CoapClientController {
         }
     }
 
-    private Endpoint endpoint;
-    private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
-
     public CoapClient getClient(final String path) {
+        //System.out.println("Got client: " + path); //DEBUG
         if (clients.get(path) == null) {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
             client.setExecutor(executor);
@@ -173,8 +167,6 @@ public class CoapClientController {
         return clients.get(path);
     }
 
-    private Map<String, CoapClient> clients = new HashMap<>();
-
     public void doError(String msg) {
         node.removeChild("broker", false);
 
@@ -182,8 +174,6 @@ public class CoapClientController {
 
         connectionFuture = Objects.getDaemonThreadPool().schedule(this::init, 2, TimeUnit.SECONDS);
     }
-
-    private ScheduledFuture connectionFuture;
 
     public ScheduledThreadPoolExecutor getExecutor() {
         return executor;

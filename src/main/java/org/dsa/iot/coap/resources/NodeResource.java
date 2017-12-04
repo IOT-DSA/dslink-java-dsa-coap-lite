@@ -94,6 +94,7 @@ public class NodeResource extends CoapResource {
         }
 
         JsonObject obj = new JsonObject(object);
+        System.out.println("handleGET: " + obj); //DEBUG
         byte[] encoded = obj.encode(EncodingFormat.MESSAGE_PACK);
         exchange.respond(CoAP.ResponseCode.VALID, encoded);
     }
@@ -102,6 +103,9 @@ public class NodeResource extends CoapResource {
     public void handlePOST(final CoapExchange exchange) {
         super.handlePOST(exchange);
         JsonObject req = new JsonObject(EncodingFormat.MESSAGE_PACK, exchange.getRequestPayload());
+
+        System.out.println("handlePost: " + req); //DEBUG
+        System.out.println("On Path: " + getDsaPath()); //DEBUG
 
         JsonObject invokeRequest = req.get("invoke");
         JsonObject invokeCloseRequest = req.get("invokeClose");

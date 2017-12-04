@@ -1,6 +1,6 @@
 package org.dsa.iot.coap.actions;
 
-import org.dsa.iot.coap.CoapHandler;
+import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeManager;
 import org.dsa.iot.dslink.node.actions.ActionResult;
@@ -22,7 +22,7 @@ public class CreateCoapClientAction implements Handler<ActionResult> {
                 .setSerializable(true)
                 .build();
 
-        CoapHandler handler = (CoapHandler) node.getLink().getHandler();
+        CoapLinkHandler handler = (CoapLinkHandler) node.getLink().getHandler();
         handler.setupCoapClient(node);
     }
 }
