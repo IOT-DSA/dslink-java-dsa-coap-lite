@@ -23,6 +23,8 @@ public class CoapLinkHandler extends DSLinkHandler {
     private DSLink requesterLink;
     private DSLink responderLink;
 
+    private CoapRequestHandler requestHandler;
+
     private boolean isRequesterInited = false;
 
     @Override
@@ -31,6 +33,9 @@ public class CoapLinkHandler extends DSLinkHandler {
         responderLink = link;
 
         rootNode = initRootNode(link);
+
+        requestHandler = new CoapRequestHandler(responderLink);
+        responderLink.getWriter().setReqHandler(requestHandler);
 
         if (rootNode.getChildren() == null) {
             return;
@@ -83,7 +88,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     public void onRequesterInitialized(DSLink link) {
         super.onRequesterInitialized(link);
         requesterLink = link;
-
+        requesterLink.getWriter().setRespHandler(new CoapResponseHandler(requesterLink));
         isRequesterInited = true;
     }
 
@@ -107,6 +112,7 @@ public class CoapLinkHandler extends DSLinkHandler {
 
     public void setupCoapClient(Node node) {
         CoapClientController controller = new CoapClientController(node);
+        requestHandler.addClient(controller);
         node.setMetaData(controller);
 
         try {

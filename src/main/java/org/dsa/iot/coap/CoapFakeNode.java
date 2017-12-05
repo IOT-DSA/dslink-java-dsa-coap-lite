@@ -13,10 +13,6 @@ public class CoapFakeNode extends Node {
 
     private CoapClientController controller;
 
-    public void kindaList() {
-        ((CoapNodeController) getMetaData()).kindaList();
-    }
-
     public String getCoapPath() {
         return coapPath;
     }

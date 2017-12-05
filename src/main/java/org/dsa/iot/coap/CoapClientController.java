@@ -47,11 +47,15 @@ public class CoapClientController {
         executor.setKeepAliveTime(2, TimeUnit.MINUTES);
     }
 
+    public String getRootPath() {
+        return node.getPath();
+    }
+
     public Node getNode() {
         return node;
     }
 
-    private void initNodes() {
+    private void initChildNodes() {
         if (!node.hasChild("remove", false)) {
             node
                     .createChild("remove", false)
@@ -73,7 +77,7 @@ public class CoapClientController {
     }
 
     public void init() {
-            initNodes();
+            initChildNodes();
 
             String url = node.getConfig("coap_url").getString();
 
@@ -119,24 +123,6 @@ public class CoapClientController {
                 return;
             }
 
-            CoapFakeNode liveNode = new CoapFakeNode(
-                    "broker",
-                    node,
-                    node.getLink(),
-                    CoapClientController.this,
-                    "/dsa",
-                    false
-            );
-
-            node.addChild(liveNode);
-
-            CoapNodeController nodeController = new CoapNodeController(
-                    CoapClientController.this,
-                    liveNode,
-                    "/dsa"
-            );
-            nodeController.init();
-            nodeController.loadIfNeeded();
             node.getChild("status", false).setValue(new Value("Ready"));
     }
 
@@ -177,6 +163,10 @@ public class CoapClientController {
 
     public ScheduledThreadPoolExecutor getExecutor() {
         return executor;
+    }
+
+    public void emit(JsonObject json) {
+        System.out.println(json);
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
