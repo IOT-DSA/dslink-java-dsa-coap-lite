@@ -73,6 +73,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                     ridsToControllers.remove(rid);
                 }
             } else {
+                //Standard case
                 try {
                     JsonObject resp = link.getResponder().parse(json);
                     responses.add(resp);

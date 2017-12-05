@@ -141,6 +141,11 @@ public class CoapClientController {
         }
     }
 
+    /**
+     * Get CoapClient with the specified path, creates Coap Client if missing.
+     * @param path
+     * @return
+     */
     public CoapClient getClient(final String path) {
         //System.out.println("Got client: " + path); //DEBUG
         if (clients.get(path) == null) {
