@@ -68,6 +68,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 }
 
                 controller.emit(json);
+
                 if ("close".equals(json.get("method"))) {
                     ridsToControllers.remove(rid);
                 }
