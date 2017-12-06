@@ -45,6 +45,11 @@ public class NodeResource extends CoapResource {
     private boolean isSubscribed = false;
     private String nodePath;
 
+    private ConcurrentHashMap<String, Object> object = new ConcurrentHashMap<>();
+    private Map<String, Resource> childs = new HashMap<>();
+
+    private CompletableFuture<Object> latch;
+
     private static String getResourceName(String path) {
         String[] parts = path.split("/");
         try {
@@ -250,8 +255,6 @@ public class NodeResource extends CoapResource {
         }
     }
 
-    private CompletableFuture<Object> latch;
-
     public class ListHandler implements Handler<ListResponse> {
         @Override
         public void handle(ListResponse event) {
@@ -326,9 +329,6 @@ public class NodeResource extends CoapResource {
             changed();
         }
     }
-
-    private ConcurrentHashMap<String, Object> object = new ConcurrentHashMap<>();
-    private Map<String, Resource> childs = new HashMap<>();
 
     @Override
     public Resource getChild(String name) {

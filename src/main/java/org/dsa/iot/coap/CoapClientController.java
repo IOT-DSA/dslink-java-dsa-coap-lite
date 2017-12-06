@@ -8,17 +8,17 @@ import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
-import org.dsa.iot.dslink.util.json.EncodingFormat;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.dsa.iot.shared.SharedObjects;
 import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
+import org.eclipse.californium.core.Utils;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -40,6 +40,7 @@ public class CoapClientController {
     private ScheduledFuture connectionFuture;
 
     private Map<String, CoapClient> clients = new HashMap<>();
+    private CoapClient client = null;
 
     public CoapClientController(Node node) {
         this.node = node;
@@ -55,7 +56,7 @@ public class CoapClientController {
         return node;
     }
 
-    private void initChildNodes() {
+    private void initDefaultNodes() {
         if (!node.hasChild("remove", false)) {
             node
                     .createChild("remove", false)
@@ -74,56 +75,30 @@ public class CoapClientController {
                     .setValue(new Value("Unknown"))
                     .build();
         }
+
+        if (!node.hasChild("ping", false)) {
+            node
+                    .createChild("ping", false)
+                    .setDisplayName("Ping")
+                    .setSerializable(false)
+                    .setAction(new Action(Permission.WRITE, new PingAction()))
+                    .build();
+        }
+
+        if (!node.hasChild("post", false)) {
+            node
+                    .createChild("post", false)
+                    .setDisplayName("Post")
+                    .setSerializable(false)
+                    .setAction(new Action(Permission.WRITE, new PostAction()))
+                    .build();
+        }
     }
 
     public void init() {
-            initChildNodes();
+        initDefaultNodes();
 
-            String url = node.getConfig("coap_url").getString();
-
-            try {
-                uri = new URI(url);
-                makeEndpoint();
-            } catch (URISyntaxException e) {
-                LOG.error("Failed to parse COAP URL.", e);
-                doError(e.getMessage());
-            }
-
-            try {
-                if (!endpoint.isStarted()) {
-                    endpoint.start();
-                }
-            } catch (IOException e) {
-                LOG.error("Failed to start endpoint.", e);
-                doError(e.getMessage());
-            }
-
-            try {
-                CoapResponse root = getClient("/" + Constants.CONN).get();
-                if (root == null || !root.isSuccess()) {
-                    root = getClient("/__root").get();
-
-                    if (root == null || !root.isSuccess()) {
-                        throw new Exception("Failed to connect.");
-                    }
-                }
-
-                JsonObject object = new JsonObject(EncodingFormat.MESSAGE_PACK, root.getPayload());
-
-                if (!object.contains("dsa")) {
-                    throw new Exception("Not a DSA COAP Server.");
-                }
-
-                if (!object.get("dsa").toString().equals("1.0.0")) {
-                    throw new Exception("DSA-over-COAP v1.0.0 is the only protocol supported.");
-                }
-            } catch (Exception e) {
-                LOG.error("Failed to run DSA COAP handshake.", e);
-                doError(e.getMessage());
-                return;
-            }
-
-            node.getChild("status", false).setValue(new Value("Ready"));
+        node.getChild("status", false).setValue(new Value("Ready"));
     }
 
     private void makeEndpoint() {
@@ -143,10 +118,11 @@ public class CoapClientController {
 
     /**
      * Get CoapClient with the specified path, creates Coap Client if missing.
+     *
      * @param path
      * @return
      */
-    public CoapClient getClient(final String path) {
+    public CoapClient getHelloWorldClient(final String path) {
         //System.out.println("Got client: " + path); //DEBUG
         if (clients.get(path) == null) {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
@@ -171,7 +147,21 @@ public class CoapClientController {
     }
 
     public void emit(JsonObject json) {
-        System.out.println(json);
+
+        System.out.println("Emit: " + json);
+        byte[] input = new byte[0];
+        try {
+            input = json.toString().getBytes("utf-8");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        CoapResponse response = getHelloWorldClient().post(input, 0);
+        if (response != null) {
+            System.out.println(Utils.prettyPrint(response));
+        } else {
+            System.out.println("No response received.");
+        }
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
@@ -187,6 +177,57 @@ public class CoapClientController {
             }
 
             node.delete(false);
+        }
+    }
+
+    CoapClient getHelloWorldClient() {
+        String url = node.getConfig("coap_url").getString() + "/helloWorld";
+
+        try {
+            uri = new URI(url);
+        } catch (URISyntaxException e) {
+            LOG.error("Failed to parse COAP URL.", e);
+            doError(e.getMessage());
+        }
+
+        System.out.println(uri);
+        client = new CoapClient(uri);
+
+        return client;
+    }
+
+    private void helloWorldGET() {
+
+        CoapResponse response = getHelloWorldClient().get();
+
+        if (response != null) {
+            System.out.println(Utils.prettyPrint(response));
+        } else {
+            System.out.println("No response received.");
+        }
+    }
+
+    private void helloWorldPOST() {
+        JsonObject obj = new JsonObject();
+
+        obj.put("hi", "there");
+
+        emit(obj);
+    }
+
+    public class PingAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            helloWorldGET();
+        }
+    }
+
+    public class PostAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            helloWorldPOST();
         }
     }
 }

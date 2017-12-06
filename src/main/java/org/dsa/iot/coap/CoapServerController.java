@@ -1,7 +1,6 @@
 package org.dsa.iot.coap;
 
-import org.dsa.iot.coap.resources.NodeResource;
-import org.dsa.iot.coap.resources.RootResource;
+import org.dsa.iot.coap.resources.HelloWorldServer;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -10,16 +9,11 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
-import org.eclipse.californium.core.CoapServer;
-import org.eclipse.californium.core.network.CoapEndpoint;
-import org.eclipse.californium.core.network.EndpointManager;
-
-import java.net.Inet4Address;
-import java.net.InetSocketAddress;
+import java.net.SocketException;
 
 public class CoapServerController {
     private Node node;
-    public CoapServer server;
+    private HelloWorldServer server;
     private int port;
     private CoapLinkHandler handler;
 
@@ -28,7 +22,7 @@ public class CoapServerController {
         this.handler = handler;
     }
 
-    public void init() {
+    private void initDefaultNodes() {
         if (!node.hasChild("remove", false)) {
             node
                     .createChild("remove", false)
@@ -46,36 +40,29 @@ public class CoapServerController {
                     .setValueType(ValueType.STRING)
                     .build();
         }
-
-        stat("Server Setup");
-
-        port = node.getConfig("coap_port").getNumber().intValue();
-        server = new CoapServer();
-        addEndpoints();
-
-        server.add(new RootResource());
-
-        NodeResource rootNode = new NodeResource(this, "/");
-        server.add(rootNode);
-
-        server.start();
-        stat("Server Started");
     }
 
-    public void stat(String name) {
+    public void init() {
+        initDefaultNodes();
+        setStatus("Server Setup");
+
+        try {
+        port = node.getConfig("coap_port").getNumber().intValue();
+        server = new HelloWorldServer(node);
+        server.addEndpoints(port);
+        server.start();
+        } catch (SocketException e) {
+            System.err.println("Failed to initialize server: " + e.getMessage());
+        }
+
+        setStatus("Server Started");
+    }
+
+    public void setStatus(String name) {
         Node statusNode = node.getChild("status", false);
         if (statusNode != null) {
             statusNode.setValue(new Value(name));
         }
-    }
-
-    private void addEndpoints() {
-        EndpointManager.getEndpointManager().getNetworkInterfaces().stream()
-                .filter(addr -> addr instanceof Inet4Address || addr.isLoopbackAddress())
-                .forEach(addr -> {
-            InetSocketAddress bindToAddress = new InetSocketAddress(addr, port);
-            server.addEndpoint(new CoapEndpoint(bindToAddress));
-        });
     }
 
     public DSLink getRequesterLink() {
