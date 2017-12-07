@@ -154,7 +154,7 @@ public class CoapClientController {
         return executor;
     }
 
-    public void emit(JsonObject json) {
+    public CoapResponse postToRemote(JsonObject json) {
 
         System.out.println("Emit: " + json);
         byte[] input = new byte[0];
@@ -164,12 +164,7 @@ public class CoapClientController {
             e.printStackTrace();
         }
 
-        CoapResponse response = getHelloWorldClient().post(input, 0);
-        if (response != null) {
-            System.out.println(Utils.prettyPrint(response));
-        } else {
-            System.out.println("No response received.");
-        }
+        return getHelloWorldClient().post(input, 0);
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
@@ -220,7 +215,7 @@ public class CoapClientController {
 
         obj.put("hi", "there");
 
-        emit(obj);
+        postToRemote(obj);
     }
 
     public class PingAction implements Handler<ActionResult> {

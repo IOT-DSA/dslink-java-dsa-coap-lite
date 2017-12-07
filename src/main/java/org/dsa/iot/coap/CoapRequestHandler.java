@@ -7,6 +7,7 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
+import org.eclipse.californium.core.CoapResponse;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -29,6 +30,16 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         this.rootNode = rootNode;
     }
 
+    private CoapClientController getClient(String path) {
+        return ((CoapClientController) rootNode.getChild("1616cli", false).getMetaData()); //TODO get proper client
+    }
+
+    private JsonObject formulateResponse(CoapResponse rawResponse) {
+        String respString = new String(rawResponse.getPayload());
+        System.out.printf("Got response: " + respString);
+        return null;
+    }
+
     synchronized public void addClient(CoapClientController client) {
         clients.add(client);
     }
@@ -42,29 +53,31 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             JsonObject json = (JsonObject) object;
             String path = json.get("path");
 
-            if (path != null && path.contains(Constants.REMOTE_NAME))
-                ((CoapClientController) rootNode.getChild("1616cli").getMetaData()).emit(json);
+            if (path != null && path.contains(Constants.REMOTE_NAME)) {
+                CoapResponse response = getClient(path).postToRemote(json);
+                JsonObject resp = formulateResponse(response);
+            } else {
+                try {
+                    JsonObject resp = link.getResponder().parse(json);
+                    responses.add(resp);
+                } catch (Exception e) {
+                    JsonObject resp = new JsonObject();
+                    Integer rid = json.get("rid");
+                    if (rid != null) {
+                        resp.put("rid", rid);
+                    }
+                    resp.put("stream", StreamState.CLOSED.getJsonName());
 
-            try {
-                JsonObject resp = link.getResponder().parse(json);
-                responses.add(resp);
-            } catch (Exception e) {
-                JsonObject resp = new JsonObject();
-                Integer rid = json.get("rid");
-                if (rid != null) {
-                    resp.put("rid", rid);
+                    JsonObject err = new JsonObject();
+                    err.put("msg", e.getMessage());
+                    { // Build stack trace
+                        StringWriter writer = new StringWriter();
+                        e.printStackTrace(new PrintWriter(writer));
+                        err.put("detail", writer.toString());
+                    }
+                    resp.put("error", err);
+                    responses.add(resp);
                 }
-                resp.put("stream", StreamState.CLOSED.getJsonName());
-
-                JsonObject err = new JsonObject();
-                err.put("msg", e.getMessage());
-                { // Build stack trace
-                    StringWriter writer = new StringWriter();
-                    e.printStackTrace(new PrintWriter(writer));
-                    err.put("detail", writer.toString());
-                }
-                resp.put("error", err);
-                responses.add(resp);
             }
         }
         Integer msgId = event.getMsgId();
