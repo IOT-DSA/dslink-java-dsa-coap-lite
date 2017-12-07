@@ -66,6 +66,14 @@ public class CoapClientController {
                     .build();
         }
 
+        if (!node.hasChild(Constants.REMOTE_NAME, false)) {
+            node
+                    .createChild(Constants.REMOTE_NAME, false)
+                    .setDisplayName(Constants.REMOTE_NAME)
+                    .setSerializable(false)
+                    .build();
+        }
+
         if (!node.hasChild("status", false)) {
             node
                     .createChild("status", false)

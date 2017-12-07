@@ -4,15 +4,11 @@ import org.dsa.iot.coap.actions.CreateCoapClientAction;
 import org.dsa.iot.coap.actions.CreateCoapServerAction;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkHandler;
-import org.dsa.iot.dslink.connection.DataHandler;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.ValueType;
-import org.dsa.iot.dslink.util.handler.Handler;
-import org.dsa.iot.dslink.util.json.JsonArray;
-import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +30,8 @@ public class CoapLinkHandler extends DSLinkHandler {
 
         rootNode = initRootNode(link);
 
-        requestHandler = new CoapRequestHandler(responderLink);
-        //responderLink.getWriter().setReqHandler(requestHandler);
+        requestHandler = new CoapRequestHandler(responderLink, rootNode);
+        responderLink.getWriter().setReqHandler(requestHandler);
 
         if (rootNode.getChildren() == null) {
             return;
