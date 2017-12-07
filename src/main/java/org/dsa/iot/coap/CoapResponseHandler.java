@@ -39,5 +39,4 @@ public class CoapResponseHandler implements Handler<DataReceived>{
         }
         link.getWriter().writeAck(event.getMsgId());
     }
-
 }

@@ -40,16 +40,17 @@ public class CoapRequestHandler implements Handler<DataReceived> {
 
         for (Object object : data) {
             JsonObject json = (JsonObject) object;
-
-            Integer rid = json.get("rid");
             String path = json.get("path");
-            if (path != null && path.contains(Constants.REMOTE_NAME)) ((CoapClientController) rootNode.getChild("1616cli").getMetaData()).emit(json);
+
+            if (path != null && path.contains(Constants.REMOTE_NAME))
+                ((CoapClientController) rootNode.getChild("1616cli").getMetaData()).emit(json);
 
             try {
                 JsonObject resp = link.getResponder().parse(json);
                 responses.add(resp);
             } catch (Exception e) {
                 JsonObject resp = new JsonObject();
+                Integer rid = json.get("rid");
                 if (rid != null) {
                     resp.put("rid", rid);
                 }
@@ -65,9 +66,9 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 resp.put("error", err);
                 responses.add(resp);
             }
-            Integer msgId = event.getMsgId();
-            writeResponses(msgId, responses);
         }
+        Integer msgId = event.getMsgId();
+        link.getWriter().writeRequestResponses(msgId, responses);
     }
 
 //        List<JsonObject> responses = new LinkedList<>();
@@ -135,8 +136,4 @@ public class CoapRequestHandler implements Handler<DataReceived> {
 //                writeResponses(msgId, responses);
 //            }
 //        }
-
-    synchronized void writeResponses(Integer ackId, Collection<JsonObject> objects) {
-        link.getWriter().writeRequestResponses(ackId, objects);
-    }
 }
