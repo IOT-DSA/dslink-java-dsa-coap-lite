@@ -1,23 +1,6 @@
-/*******************************************************************************
- * Copyright (c) 2015 Institute for Pervasive Computing, ETH Zurich and others.
- *
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
- * and Eclipse Distribution License v1.0 which accompany this distribution.
- *
- * The Eclipse Public License is available at
- *    http://www.eclipse.org/legal/epl-v10.html
- * and the Eclipse Distribution License is available at
- *    http://www.eclipse.org/org/documents/edl-v10.html.
- *
- * Contributors:
- *    Matthias Kovatsch - creator and main architect
- *    Kai Hudalla (Bosch Software Innovations GmbH) - add endpoints for all IP addresses
- ******************************************************************************/
-package org.dsa.iot.coap.resources;
+package org.dsa.iot.coap;
 
 import org.dsa.iot.dslink.node.Node;
-import org.dsa.iot.dslink.util.json.EncodingFormat;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.CoapServer;
@@ -25,17 +8,20 @@ import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.EndpointManager;
 import org.eclipse.californium.core.server.resources.CoapExchange;
+import org.eclipse.californium.core.server.resources.Resource;
 
 import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 
-public class HelloWorldServer extends CoapServer {
+public class ClientSideServer extends CoapServer {
 
+    private Map<Integer, CoapResource> resourceRidMap = new HashMap<>();
     private Node homeNode;
 
     /**
@@ -55,36 +41,30 @@ public class HelloWorldServer extends CoapServer {
      * Constructor for a new Hello-World server. Here, the resources
      * of the server are initialized.
      */
-    public HelloWorldServer(Node homeNode) throws SocketException {
+    public ClientSideServer(Node homeNode) throws SocketException {
         this.homeNode = homeNode;
-        // provide an instance of a Hello-World resource
-        add(new HelloWorldResource());
+    }
+
+    public void addResource(int rid) {
+        resourceRidMap.put(rid, new ClientListenerResource(Integer.toString(rid)));
+        add(resourceRidMap.get(rid));
+    }
+
+    public void removeResource(int rid) {
+        CoapResource res = resourceRidMap.remove(rid);
+        if (res != null) remove(res);
     }
 
     /*
-     * Definition of the Hello-World Resource
-     */
-    class HelloWorldResource extends CoapResource {
+         * Definition of the Hello-World Resource
+         */
+    class ClientListenerResource extends CoapResource {
 
-        public HelloWorldResource() {
-
+        public ClientListenerResource(String ridS) {
             // set resource identifier
-            super("helloWorld");
-
+            super(ridS);
             // set display name
-            getAttributes().setTitle("Hello-World Resource");
-        }
-
-        @Override
-        public void handleGET(CoapExchange exchange) {
-            System.out.println("Received GET");
-//            JsonObject obj = new JsonObject(homeNode.);
-//            System.out.println("handleGET: " + obj); //DEBUG
-//            byte[] encoded = obj.encode(EncodingFormat.MESSAGE_PACK);
-//            exchange.respond(CoAP.ResponseCode.VALID, encoded);
-
-            // respond to the request
-            exchange.respond("Hello World!");
+            getAttributes().setTitle(ridS);
         }
 
         @Override

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
+import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -33,6 +34,9 @@ public class CoapClientController {
 
     private Node node;
     private URI uri;
+
+    private ClientSideServer clientServer;
+    private int port;
 
     private Endpoint endpoint;
     private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
@@ -105,6 +109,17 @@ public class CoapClientController {
 
     public void init() {
         initDefaultNodes();
+
+//        try {
+//            String[] spl = node.getConfig("coap_url").getString().split(":");
+//            port = new Integer(spl[spl.length-1]);
+//            //port = node.getConfig("coap_port").getNumber().intValue();
+//            clientServer = new ClientSideServer(node);
+//            clientServer.addEndpoints(port);
+//            clientServer.start();
+//        } catch (SocketException e) {
+//            System.err.println("Failed to initialize server: " + e.getMessage());
+//        }
 
         node.getChild("status", false).setValue(new Value("Ready"));
     }

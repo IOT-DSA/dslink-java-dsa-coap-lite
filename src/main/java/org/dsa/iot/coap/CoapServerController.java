@@ -1,6 +1,6 @@
 package org.dsa.iot.coap;
 
-import org.dsa.iot.coap.resources.HelloWorldServer;
+import org.dsa.iot.coap.resources.DSACoapServer;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -13,7 +13,7 @@ import java.net.SocketException;
 
 public class CoapServerController {
     private Node node;
-    private HelloWorldServer server;
+    private DSACoapServer server;
     private int port;
     private CoapLinkHandler handler;
 
@@ -48,7 +48,7 @@ public class CoapServerController {
 
         try {
         port = node.getConfig("coap_port").getNumber().intValue();
-        server = new HelloWorldServer(node);
+        server = new DSACoapServer(node);
         server.addEndpoints(port);
         server.start();
         } catch (SocketException e) {

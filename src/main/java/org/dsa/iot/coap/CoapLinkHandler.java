@@ -12,16 +12,36 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class CoapLinkHandler extends DSLinkHandler {
     private static final Logger LOG = LoggerFactory.getLogger(CoapLinkHandler.class);
 
     private Node rootNode;
     private DSLink requesterLink;
     private DSLink responderLink;
+    private final Set<Integer> usedRids = new HashSet<>();
+    private int lastRid = 0;
 
     private CoapRequestHandler requestHandler;
 
     private boolean isRequesterInited = false;
+
+    public int generateNewRid() {
+        synchronized (usedRids) {
+            int nextRid = lastRid + 1;
+            while (usedRids.contains(nextRid)) { if (nextRid++ < 0) nextRid = 0;}
+            lastRid = nextRid;
+            return nextRid;
+        }
+    }
+
+    public void retireRid(int rid) {
+        synchronized (usedRids) {
+            usedRids.remove(rid);
+        }
+    }
 
     @Override
     public void onResponderInitialized(DSLink link) {
