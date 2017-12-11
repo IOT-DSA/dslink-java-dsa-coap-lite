@@ -7,6 +7,7 @@ import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
+import org.eclipse.californium.core.CoapClient;
 import org.eclipse.californium.core.CoapResponse;
 
 import java.io.PrintWriter;
@@ -30,14 +31,36 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         this.rootNode = rootNode;
     }
 
-    private CoapClientController getClient(String path) {
-        return ((CoapClientController) rootNode.getChild("1616cli", false).getMetaData()); //TODO get proper client
+    private CoapClientController getClientFromPath(String path) {
+        String nodeName = extractNodeName(path);
+        return ((CoapClientController) rootNode.getChild(nodeName, false).getMetaData());
     }
 
     private JsonObject formulateResponse(CoapResponse rawResponse) {
         String respString = new String(rawResponse.getPayload());
         System.out.printf("Got response: " + respString);
         return null;
+    }
+
+    private String extractRemotePath(String path) {
+        int idx = path.indexOf(Constants.REMOTE_NAME);
+        if (idx >= 0) {
+            String sub = path.substring(idx + Constants.REMOTE_NAME.length());
+            if (sub.length() > 0 ) return sub;
+            else return "/";
+        } else {
+            return null;
+        }
+    }
+
+    private String extractNodeName(String path) {
+        int idx = path.indexOf(Constants.REMOTE_NAME);
+        if (idx >= 0) {
+            String[] split = path.substring(0, idx).split("/");
+            return split[split.length - 1];
+        } else {
+            return null;
+        }
     }
 
     synchronized public void addClient(CoapClientController client) {
@@ -54,8 +77,17 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             String path = json.get("path");
 
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
-                CoapResponse response = getClient(path).postToRemote(json);
-                JsonObject resp = formulateResponse(response);
+                //TODO: make sure the right RID path goes here
+                CoapClient cli = getClientFromPath(path).getClient();
+
+                String method = json.get("method");
+                switch (method) {
+                    case "list":
+                    default:
+                        CoapResponse response = getClientFromPath(path).postToRemote(json);
+                        JsonObject resp = formulateResponse(response);
+                        break;
+                }
             } else {
                 try {
                     JsonObject resp = link.getResponder().parse(json);

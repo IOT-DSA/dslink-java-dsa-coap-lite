@@ -60,7 +60,7 @@ public class CoapNodeController {
 
         isInitialized = true;
 
-        client = controller.getHelloWorldClient(coapPath);
+        client = controller.getClient(coapPath);
 
         node.getListener().setOnListHandler(event -> {
             handles++;
@@ -463,7 +463,7 @@ public class CoapNodeController {
                 c = client;
             } else {
                 try {
-                    c = controller.getHelloWorldClient(
+                    c = controller.getClient(
                             coapPath + "/" + CustomURLEncoder.encode(node.getName(), "UTF-8"));
                 } catch (UnsupportedEncodingException e) {
                     throw new RuntimeException(e);

@@ -41,6 +41,7 @@ public class DSACoapServer extends CoapServer {
     private Node homeNode;
     private Map<Integer, Integer> localToRemoteRidHash = new HashMap<>();
     private Map<Integer, CoapExchange> pendingResponseesHash = new HashMap<>();
+    private Map<Integer, RidUpdateResource> openRidsHash = new HashMap<>();
     private Map<Integer, String> remoteResourceHash = new HashMap<>();
 
     /**
@@ -102,8 +103,11 @@ public class DSACoapServer extends CoapServer {
             int thisRid = linkHand.generateNewRid();
             int remoteRid = responseJson.get("rid");
 
+            RidUpdateResource ridRes = new RidUpdateResource(thisRid);
+
             localToRemoteRidHash.put(thisRid, remoteRid);
             pendingResponseesHash.put(thisRid, exchange);
+            openRidsHash.put(thisRid, ridRes);
 
             responseJson.put("rid", thisRid);
             linkHand.getRequesterLink().getWriter().writeRequest(responseJson, false);
@@ -114,6 +118,16 @@ public class DSACoapServer extends CoapServer {
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
+
+//            		CoapClient client = this.createClient(exchange.getRequestText());
+//		CoapObserveRelation relation;
+//		relation = client.observe(handler);
+//		synchronized(ridRes.relationStorage) {
+//			relationStorage.put(new InetSocketAddress(exchange.getSourceAddress(), exchange.getSourcePort()), relation);
+//		}
+//
+//		Response response = new Response(ResponseCode.VALID);
+//		exchange.respond(response);
 
             exchange.respond(CoAP.ResponseCode.CREATED, bytes);
         }

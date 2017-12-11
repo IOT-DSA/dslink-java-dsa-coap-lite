@@ -19,7 +19,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.UnsupportedEncodingException;
-import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
@@ -145,8 +144,7 @@ public class CoapClientController {
      * @param path
      * @return
      */
-    public CoapClient getHelloWorldClient(final String path) {
-        //System.out.println("Got client: " + path); //DEBUG
+    public CoapClient getClient(final String path) {
         if (clients.get(path) == null) {
             CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
             client.setExecutor(executor);
@@ -179,7 +177,7 @@ public class CoapClientController {
             e.printStackTrace();
         }
 
-        return getHelloWorldClient().post(input, 0);
+        return getClient().post(input, 0);
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
@@ -198,8 +196,8 @@ public class CoapClientController {
         }
     }
 
-    CoapClient getHelloWorldClient() {
-        String url = node.getConfig("coap_url").getString() + "/helloWorld";
+    CoapClient getClient() {
+        String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_CLIENT;
 
         try {
             uri = new URI(url);
@@ -216,7 +214,7 @@ public class CoapClientController {
 
     private void helloWorldGET() {
 
-        CoapResponse response = getHelloWorldClient().get();
+        CoapResponse response = getClient().get();
 
         if (response != null) {
             System.out.println(Utils.prettyPrint(response));
