@@ -17,10 +17,10 @@
 package org.dsa.iot.coap.resources;
 
 import org.dsa.iot.coap.CoapLinkHandler;
+import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
-import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.CoapServer;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.network.CoapEndpoint;
@@ -64,21 +64,21 @@ public class DSACoapServer extends CoapServer {
     public DSACoapServer(Node homeNode) throws SocketException {
         this.homeNode = homeNode;
         // provide an instance of a Hello-World resource
-        add(new HelloWorldResource());
+        add(new GatewayResource());
     }
 
     /*
      * Definition of the Hello-World Resource
      */
-    class HelloWorldResource extends CoapResource {
+    class GatewayResource extends CoapResource {
 
-        public HelloWorldResource() {
+        public GatewayResource() {
 
             // set resource identifier
-            super("helloWorld");
+            super(Constants.MAIN_SERVER_NAME);
 
             // set display name
-            getAttributes().setTitle("Hello-World Resource");
+            getAttributes().setTitle(Constants.MAIN_SERVER_NAME);
         }
 
         @Override
@@ -103,6 +103,29 @@ public class DSACoapServer extends CoapServer {
             int thisRid = linkHand.generateNewRid();
             int remoteRid = responseJson.get("rid");
 
+            String method = responseJson.get("method");
+            switch (method) {
+                case "set":
+                    //TODO: doSet()
+                    responseJson = Constants.makeCloseReponse(remoteRid);
+                    break;
+                case "remove":
+                    //Blank response
+                    //TODO: doRemove();
+                    //TODO: make sure the actions are actually performed
+                    responseJson = Constants.makeCloseReponse(remoteRid);
+                    break;
+                case "invoke":
+                    //Meaningful response
+                case "list":
+                    //Need to create update servers
+                case "subscribe":
+                case "unsubscribe":
+                    //Need to close update servers
+                case "close":
+                    //Need to close update servers
+            }
+
             RidUpdateResource ridRes = new RidUpdateResource(thisRid);
 
             localToRemoteRidHash.put(thisRid, remoteRid);
@@ -112,12 +135,7 @@ public class DSACoapServer extends CoapServer {
             responseJson.put("rid", thisRid);
             linkHand.getRequesterLink().getWriter().writeRequest(responseJson, false);
 
-            byte[] bytes = new byte[0];
-            try {
-                bytes = responseJson.toString().getBytes("utf-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
+
 
 //            		CoapClient client = this.createClient(exchange.getRequestText());
 //		CoapObserveRelation relation;
@@ -128,6 +146,13 @@ public class DSACoapServer extends CoapServer {
 //
 //		Response response = new Response(ResponseCode.VALID);
 //		exchange.respond(response);
+
+            byte[] bytes = new byte[0];
+            try {
+                bytes = responseJson.toString().getBytes("utf-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
 
             exchange.respond(CoAP.ResponseCode.CREATED, bytes);
         }

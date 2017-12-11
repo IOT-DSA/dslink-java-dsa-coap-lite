@@ -197,7 +197,7 @@ public class CoapClientController {
     }
 
     CoapClient getClient() {
-        String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_CLIENT;
+        String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_SERVER_NAME;
 
         try {
             uri = new URI(url);
