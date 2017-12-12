@@ -1,5 +1,7 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.handlers;
 
+import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.controllers.CoapClientController;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
@@ -26,7 +28,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
     Set<CoapClientController> clients = new HashSet<CoapClientController>();
     Map<Integer, CoapClientController> ridsToControllers = new ConcurrentHashMap<Integer, CoapClientController>();
 
-    CoapRequestHandler(DSLink link, Node rootNode) {
+    public CoapRequestHandler(DSLink link, Node rootNode) {
         this.link = link;
         this.rootNode = rootNode;
     }

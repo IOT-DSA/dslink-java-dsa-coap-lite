@@ -58,8 +58,8 @@ public class DSACoapServer extends CoapServer {
     }
 
     /*
-     * Constructor for a new Hello-World server. Here, the resources
-     * of the server are initialized.
+     * Constructor for a new gateway server. It's job is to handle new incoming
+     * requests and to create new resources for streaming requests.
      */
     public DSACoapServer(Node homeNode) throws SocketException {
         this.homeNode = homeNode;
@@ -68,7 +68,7 @@ public class DSACoapServer extends CoapServer {
     }
 
     /*
-     * Definition of the Hello-World Resource
+     * Resource used to process requests on the main gateway.
      */
     class GatewayResource extends CoapResource {
 

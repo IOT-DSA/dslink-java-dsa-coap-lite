@@ -1,5 +1,6 @@
 package org.dsa.iot.coap.resources;
 
+import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.coap.CoAP;
@@ -15,10 +16,11 @@ public class RidUpdateResource extends CoapResource {
 
     int rid;
     JsonObject latest;
-    public RidUpdateResource(int rid) {
+
+    RidUpdateResource(int rid) {
 
         // set resource identifier
-        super("rid_" + Integer.toString(rid));
+        super(Constants.RID_PREFIX + Integer.toString(rid));
         this.rid = rid;
 
         //TODO: verify these settings
@@ -27,7 +29,7 @@ public class RidUpdateResource extends CoapResource {
         getAttributes().setObservable();
 
         // set display name
-        getAttributes().setTitle("rid_" + Integer.toString(rid));
+        getAttributes().setTitle(Constants.RID_PREFIX + Integer.toString(rid));
     }
 
     void putLatestUpdate(JsonObject update) {

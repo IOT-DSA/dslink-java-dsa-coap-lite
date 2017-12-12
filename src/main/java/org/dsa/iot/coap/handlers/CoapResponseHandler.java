@@ -1,8 +1,9 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.handlers;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.dsa.iot.coap.controllers.CoapServerController;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.util.handler.Handler;

@@ -2,6 +2,9 @@ package org.dsa.iot.coap;
 
 import org.dsa.iot.coap.actions.CreateCoapClientAction;
 import org.dsa.iot.coap.actions.CreateCoapServerAction;
+import org.dsa.iot.coap.controllers.CoapClientController;
+import org.dsa.iot.coap.controllers.CoapServerController;
+import org.dsa.iot.coap.handlers.CoapRequestHandler;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkHandler;
 import org.dsa.iot.dslink.node.Node;
@@ -140,7 +143,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     }
 
     public void setupCoapServer(Node node) {
-        CoapServerController controller = new CoapServerController(node, this);
+        CoapServerController controller = new CoapServerController(node);
         node.setMetaData(controller);
 
         try {

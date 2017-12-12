@@ -1,5 +1,6 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.controllers;
 
+import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -22,7 +23,6 @@ import org.slf4j.LoggerFactory;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
@@ -167,7 +167,7 @@ public class CoapClientController {
         return getClient().post(input, 0);
     }
 
-    CoapClient getClient() {
+    public CoapClient getClient() {
         String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_SERVER_NAME;
         CoapClient client = clients.get(url);
         if (client == null) {

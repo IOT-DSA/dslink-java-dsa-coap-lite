@@ -1,7 +1,6 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.controllers;
 
 import org.dsa.iot.coap.resources.DSACoapServer;
-import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -9,17 +8,16 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
+
 import java.net.SocketException;
 
 public class CoapServerController {
     private Node node;
     private DSACoapServer server;
     private int port;
-    private CoapLinkHandler handler;
 
-    public CoapServerController(Node node, CoapLinkHandler handler) {
+    public CoapServerController(Node node) {
         this.node = node;
-        this.handler = handler;
     }
 
     private void initDefaultNodes() {
@@ -47,10 +45,10 @@ public class CoapServerController {
         setStatus("Server Setup");
 
         try {
-        port = node.getConfig("coap_port").getNumber().intValue();
-        server = new DSACoapServer(node);
-        server.addEndpoints(port);
-        server.start();
+            port = node.getConfig("coap_port").getNumber().intValue();
+            server = new DSACoapServer(node);
+            server.addEndpoints(port);
+            server.start();
         } catch (SocketException e) {
             System.err.println("Failed to initialize server: " + e.getMessage());
         }
@@ -63,14 +61,6 @@ public class CoapServerController {
         if (statusNode != null) {
             statusNode.setValue(new Value(name));
         }
-    }
-
-    public DSLink getRequesterLink() {
-        return handler.getRequesterLink();
-    }
-
-    public DSLink getResponderLink() {
-        return handler.getResponderLink();
     }
 
     public class DeleteCoapClientAction implements Handler<ActionResult> {
