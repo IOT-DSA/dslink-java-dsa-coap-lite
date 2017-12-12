@@ -15,8 +15,8 @@ public class RidUpdateResource extends CoapResource {
 
     int rid;
     JsonObject latest;
-
     public RidUpdateResource(int rid) {
+
         // set resource identifier
         super("rid_" + Integer.toString(rid));
         this.rid = rid;

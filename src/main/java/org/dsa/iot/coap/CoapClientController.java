@@ -36,9 +36,6 @@ public class CoapClientController {
     private Node node;
     private URI uri;
 
-    private ClientSideServer clientServer;
-    private int port;
-
     private Endpoint endpoint;
     private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
 
@@ -50,14 +47,6 @@ public class CoapClientController {
         this.node = node;
         executor.setMaximumPoolSize(128);
         executor.setKeepAliveTime(2, TimeUnit.MINUTES);
-    }
-
-    public String getRootPath() {
-        return node.getPath();
-    }
-
-    public Node getNode() {
-        return node;
     }
 
     private void initDefaultNodes() {
@@ -165,10 +154,6 @@ public class CoapClientController {
         connectionFuture = Objects.getDaemonThreadPool().schedule(this::init, 2, TimeUnit.SECONDS);
     }
 
-    public ScheduledThreadPoolExecutor getExecutor() {
-        return executor;
-    }
-
     public CoapResponse postToRemote(JsonObject json) {
 
         System.out.println("Emit: " + json);
@@ -180,22 +165,6 @@ public class CoapClientController {
         }
 
         return getClient().post(input, 0);
-    }
-
-    public class DeleteCoapClientAction implements Handler<ActionResult> {
-
-        @Override
-        public void handle(ActionResult event) {
-            if (connectionFuture != null && !connectionFuture.isDone()) {
-                connectionFuture.cancel(true);
-            }
-
-            if (endpoint != null) {
-                endpoint.destroy();
-            }
-
-            node.delete(false);
-        }
     }
 
     CoapClient getClient() {
@@ -234,6 +203,22 @@ public class CoapClientController {
         obj.put("hi", "there");
 
         postToRemote(obj);
+    }
+
+    public class DeleteCoapClientAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            if (connectionFuture != null && !connectionFuture.isDone()) {
+                connectionFuture.cancel(true);
+            }
+
+            if (endpoint != null) {
+                endpoint.destroy();
+            }
+
+            node.delete(false);
+        }
     }
 
     public class PingAction implements Handler<ActionResult> {

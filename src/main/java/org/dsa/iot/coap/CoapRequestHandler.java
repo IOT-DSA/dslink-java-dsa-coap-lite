@@ -84,6 +84,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 CoapClient cli = getClientFromPath(path).getClient();
 
                 String method = json.get("method");
+                json.put("path", extractRemotePath(path));
                 switch (method) {
                     case "list":
                     default:
