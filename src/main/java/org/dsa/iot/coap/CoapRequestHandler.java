@@ -37,6 +37,8 @@ public class CoapRequestHandler implements Handler<DataReceived> {
     }
 
     private JsonObject formulateResponse(CoapResponse rawResponse) {
+        //TODO: Hacky exception handling?
+        if (rawResponse.getPayload() == null) return null;
         String respString = new String(rawResponse.getPayload());
         System.out.printf("Got response: " + respString);
         return null;
@@ -78,6 +80,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
 
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
                 //TODO: make sure the right RID path goes here
+
                 CoapClient cli = getClientFromPath(path).getClient();
 
                 String method = json.get("method");

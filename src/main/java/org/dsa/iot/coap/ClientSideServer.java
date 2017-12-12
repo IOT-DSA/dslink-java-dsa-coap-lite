@@ -43,6 +43,7 @@ public class ClientSideServer extends CoapServer {
      */
     public ClientSideServer(Node homeNode) throws SocketException {
         this.homeNode = homeNode;
+        add(new ClientMainResource());
     }
 
     public void addResource(int rid) {
@@ -55,16 +56,39 @@ public class ClientSideServer extends CoapServer {
         if (res != null) remove(res);
     }
 
-    /*
-         * Definition of the Hello-World Resource
-         */
     class ClientListenerResource extends CoapResource {
 
-        public ClientListenerResource(String ridS) {
+        public ClientListenerResource(String ridStr) {
             // set resource identifier
-            super(ridS);
+            super(ridStr);
             // set display name
-            getAttributes().setTitle(ridS);
+            getAttributes().setTitle(ridStr);
+        }
+
+        @Override
+        public void handlePOST(final CoapExchange exchange) {
+            System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
+
+            JsonObject responseJson = new JsonObject(new String(exchange.getRequestPayload()));
+
+            byte[] bytes = new byte[0];
+            try {
+                bytes = responseJson.toString().getBytes("utf-8");
+            } catch (UnsupportedEncodingException e) {
+                e.printStackTrace();
+            }
+
+            exchange.respond(CoAP.ResponseCode.VALID, bytes);
+        }
+    }
+
+    class ClientMainResource extends CoapResource {
+
+        public ClientMainResource() {
+            // set resource identifier
+            super(homeNode.getName());
+            // set display name
+            getAttributes().setTitle(homeNode.getName());
         }
 
         @Override

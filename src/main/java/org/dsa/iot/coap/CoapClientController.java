@@ -11,6 +11,7 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.dsa.iot.shared.SharedObjects;
 import org.eclipse.californium.core.CoapClient;
+import org.eclipse.californium.core.CoapHandler;
 import org.eclipse.californium.core.CoapResponse;
 import org.eclipse.californium.core.Utils;
 import org.eclipse.californium.core.network.CoapEndpoint;
@@ -23,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +44,7 @@ public class CoapClientController {
 
     private ScheduledFuture connectionFuture;
 
-    private Map<String, CoapClient> clients = new HashMap<>();
-    private CoapClient client = null;
+    private Map<String, CoapClient> clients = new ConcurrentHashMap<>();
 
     public CoapClientController(Node node) {
         this.node = node;
@@ -145,13 +146,14 @@ public class CoapClientController {
      * @return
      */
     public CoapClient getClient(final String path) {
-        if (clients.get(path) == null) {
-            CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
-            client.setExecutor(executor);
-            client.setEndpoint(endpoint);
-            client.setTimeout(10000);
-            clients.put(path, client);
-        }
+        //TODO: possibly do creation here
+//        if (clients.get(path) == null) {
+//            CoapClient client = new CoapClient(uri.resolve(path.replace(" ", "%20")));
+//            client.setExecutor(executor);
+//            client.setEndpoint(endpoint);
+//            client.setTimeout(10000);
+//            clients.put(path, client);
+//        }
         return clients.get(path);
     }
 
@@ -198,17 +200,20 @@ public class CoapClientController {
 
     CoapClient getClient() {
         String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_SERVER_NAME;
+        CoapClient client = clients.get(url);
+        if (client == null) {
+            try {
+                uri = new URI(url);
+            } catch (URISyntaxException e) {
+                LOG.error("Failed to parse COAP URL.", e);
+                doError(e.getMessage());
+            }
 
-        try {
-            uri = new URI(url);
-        } catch (URISyntaxException e) {
-            LOG.error("Failed to parse COAP URL.", e);
-            doError(e.getMessage());
+            System.out.println(uri);
+            client = new CoapClient(uri);
+            client.observe(new AsynchListener());
+            clients.put(url, client);
         }
-
-        System.out.println(uri);
-        client = new CoapClient(uri);
-
         return client;
     }
 
@@ -244,6 +249,18 @@ public class CoapClientController {
         @Override
         public void handle(ActionResult event) {
             helloWorldPOST();
+        }
+    }
+
+    class AsynchListener implements CoapHandler {
+        @Override
+        public void onLoad(CoapResponse response) {
+            System.out.println( "I Heard: " + response.getResponseText() );
+        }
+
+        @Override
+        public void onError() {
+            System.err.println("Error");
         }
     }
 }

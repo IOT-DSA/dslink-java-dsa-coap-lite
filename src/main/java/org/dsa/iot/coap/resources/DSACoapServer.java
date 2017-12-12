@@ -76,6 +76,9 @@ public class DSACoapServer extends CoapServer {
 
             // set resource identifier
             super(Constants.MAIN_SERVER_NAME);
+            setObservable(true);
+            setObserveType(CoAP.Type.CON);
+            getAttributes().setObservable();
 
             // set display name
             getAttributes().setTitle(Constants.MAIN_SERVER_NAME);
