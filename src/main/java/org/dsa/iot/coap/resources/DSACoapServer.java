@@ -79,8 +79,7 @@ public class DSACoapServer extends CoapServer {
         pendingResponseesHash.put(localRid, pending);
         openRidsHash.put(localRid, ridRes);
         coapLinkHandler.registerNewRid(localRid, this);
-        this.add(ridRes);
-        this.start();
+        add(ridRes);
     }
 
     private void sendToLocalBroker(int rid, JsonObject json) {
@@ -143,14 +142,13 @@ public class DSACoapServer extends CoapServer {
             String method = responseJson.get("method");
             switch (method) {
                 case "set":
-                    //TODO: doSet()
+                    homeServer.sendToLocalBroker(thisRid, responseJson);
                     responseJson = Constants.makeCloseReponse(remoteRid);
                     homeServer.replyToRemoteBroker(exchange,responseJson);
                     break;
                 case "remove":
-                    //Blank response
-                    //TODO: doRemove();
-                    //TODO: make sure the actions are actually performed
+                    //TODO: doRemove(); is the dslink reponsible for keeping track of defunct rids?
+                    homeServer.sendToLocalBroker(thisRid, responseJson);
                     responseJson = Constants.makeCloseReponse(remoteRid);
                     homeServer.replyToRemoteBroker(exchange,responseJson);
                     break;

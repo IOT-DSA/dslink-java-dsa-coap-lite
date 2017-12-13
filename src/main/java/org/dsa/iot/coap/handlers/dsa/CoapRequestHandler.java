@@ -4,7 +4,6 @@ import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.coap.controllers.CoapClientController;
 import org.dsa.iot.coap.handlers.coap.AsynchListener;
-import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
 import org.dsa.iot.dslink.node.Node;
@@ -12,6 +11,7 @@ import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapClient;
+import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.californium.core.CoapResponse;
 
 import java.io.PrintWriter;
@@ -29,7 +29,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
 
     private CoapLinkHandler coapLinkHandler;
     private Node rootNode;
-    Map<Integer, CoapClient> ridsToClients = new ConcurrentHashMap<>();
+    Map<Integer, CoapObserveRelation> ridsToObservations = new ConcurrentHashMap<>();
 
     public CoapRequestHandler(CoapLinkHandler handle, Node rootNode) {
         this.rootNode = rootNode;
@@ -82,20 +82,26 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
                 String method = json.get("method");
                 json.put("path", extractRemotePath(path));
-                CoapResponse response = null;
+                CoapClientController cliContr = getControllerFromPath(path);
+                CoapResponse response = cliContr.postToRemote(json);
                 switch (method) {
-                    //TODO: take care of the other cases
+                    case "unsubscribe":
+                    case "close":
+                        //TODO: properly close
+                    case "subscribe":
                     case "list":
-                        CoapClientController cliContr = getControllerFromPath(path);
-                        response = cliContr.postToRemote(json);
                         JsonObject obj = Constants.extractPayload(response);
                         int rid = json.get("rid");
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
-                        //TODO: create proper listener
-                        client.observe(new AsynchListener(coapLinkHandler));
-                        ridsToClients.put(rid, client);
+                        //TODO: verify listener
+                        CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
+                        ridsToObservations.put(rid, observation);
                         break;
+                    case "invoke":
+                        //TODO: handle streaming
+                    case "remove":
+                    case "set":
                     default:
                         JsonObject resp = formulateResponse(response);
                         responses.add(resp);

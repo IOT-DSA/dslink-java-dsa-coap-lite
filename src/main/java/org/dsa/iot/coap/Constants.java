@@ -12,6 +12,8 @@ public class Constants {
     public static final String MAIN_SERVER_NAME = "helloWorld";
     public static final String RID_PREFIX = "__rid_";
     public static final String REMOTE_RID_FIELD = "RemoteRid";
+    public static final String BLANK_KEY = "BlankJson";
+    public static final String BLANK_VAL = "Handshake";
 
     public static JsonObject makeCloseReponse(int rid) {
         JsonObject obj = new JsonObject();

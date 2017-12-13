@@ -6,17 +6,20 @@ import org.eclipse.californium.core.CoapResource;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 
-import static org.eclipse.californium.core.coap.CoAP.ResponseCode.CHANGED;
-
 /**
  * @author James (Juris) Puchin
  * Created on 12/10/2017
  */
 public class RidUpdateResource extends CoapResource {
 
-    int localRid;
-    int remoteRid;
-    JsonObject latest;
+    private int localRid;
+    private int remoteRid;
+    private JsonObject latest;
+
+    private void clearData() {
+        latest = new JsonObject();
+        latest.put(Constants.BLANK_KEY, Constants.BLANK_VAL);
+    }
 
     RidUpdateResource(int localRid, int remoteRid) {
 
@@ -24,6 +27,7 @@ public class RidUpdateResource extends CoapResource {
         super(Constants.RID_PREFIX + Integer.toString(localRid));
         this.localRid = localRid;
         this.remoteRid = remoteRid;
+        clearData();
 
         //TODO: verify these settings
         setObservable(true);
