@@ -14,14 +14,16 @@ import static org.eclipse.californium.core.coap.CoAP.ResponseCode.CHANGED;
  */
 public class RidUpdateResource extends CoapResource {
 
-    int rid;
+    int localRid;
+    int remoteRid;
     JsonObject latest;
 
-    RidUpdateResource(int rid) {
+    RidUpdateResource(int localRid, int remoteRid) {
 
         // set resource identifier
-        super(Constants.RID_PREFIX + Integer.toString(rid));
-        this.rid = rid;
+        super(Constants.RID_PREFIX + Integer.toString(localRid));
+        this.localRid = localRid;
+        this.remoteRid = remoteRid;
 
         //TODO: verify these settings
         setObservable(true);
@@ -29,19 +31,17 @@ public class RidUpdateResource extends CoapResource {
         getAttributes().setObservable();
 
         // set display name
-        getAttributes().setTitle(Constants.RID_PREFIX + Integer.toString(rid));
-    }
-
-    void putLatestUpdate(JsonObject update) {
-        latest = update;
-        changed();
+        getAttributes().setTitle(Constants.RID_PREFIX + Integer.toString(localRid));
     }
 
     @Override
-    public void handlePUT(CoapExchange exchange) {
-        // ...
-        exchange.respond(CHANGED);
-        changed(); // notify all observers
+    public void handleGET(CoapExchange exchange) {
+        exchange.respond(latest.toString());
     }
 
+    public void postDSAUpdate(JsonObject json) {
+        json.put("rid", remoteRid);
+        latest = json;
+        changed();
+    }
 }

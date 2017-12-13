@@ -27,7 +27,6 @@ import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.EndpointManager;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 
-import java.io.UnsupportedEncodingException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
@@ -38,7 +37,7 @@ import java.util.Map;
 
 public class DSACoapServer extends CoapServer {
 
-    private Node homeNode;
+    private CoapLinkHandler coapLinkHandler;
     private Map<Integer, Integer> localToRemoteRidHash = new HashMap<>();
     private Map<Integer, CoapExchange> pendingResponseesHash = new HashMap<>();
     private Map<Integer, RidUpdateResource> openRidsHash = new HashMap<>();
@@ -62,9 +61,41 @@ public class DSACoapServer extends CoapServer {
      * requests and to create new resources for streaming requests.
      */
     public DSACoapServer(Node homeNode) throws SocketException {
-        this.homeNode = homeNode;
+        coapLinkHandler = ((CoapLinkHandler) homeNode.getLink().getHandler());
         // provide an instance of a Hello-World resource
-        add(new GatewayResource());
+        add(new GatewayResource(this));
+    }
+
+    public void sendRemoteResponse(JsonObject json) {
+        RidUpdateResource res = openRidsHash.get(json.get("rid"));
+        res.postDSAUpdate(json);
+    }
+
+    private void createNewRidResource(int localRid, int remoteRid, CoapExchange pending) {
+
+        RidUpdateResource ridRes = new RidUpdateResource(localRid, remoteRid);
+
+        localToRemoteRidHash.put(localRid, remoteRid);
+        pendingResponseesHash.put(localRid, pending);
+        openRidsHash.put(localRid, ridRes);
+        coapLinkHandler.registerNewRid(localRid, this);
+        this.add(ridRes);
+        this.start();
+    }
+
+    private void sendToLocalBroker(int rid, JsonObject json) {
+        json.put("rid", rid);
+        coapLinkHandler.getRequesterLink().getWriter().writeRequest(json, false);
+    }
+
+    private void replyToRemoteBroker(CoapExchange exchange, JsonObject response) {
+        exchange.respond(CoAP.ResponseCode.VALID, Constants.jsonToBytes(response));
+    }
+
+    private void replyWithNewResource(CoapExchange exchange, int newRid) {
+        JsonObject response = new JsonObject();
+        response.put(Constants.REMOTE_RID_FIELD, Constants.RID_PREFIX + newRid);
+        exchange.respond(CoAP.ResponseCode.CREATED, Constants.jsonToBytes(response));
     }
 
     /*
@@ -72,7 +103,9 @@ public class DSACoapServer extends CoapServer {
      */
     class GatewayResource extends CoapResource {
 
-        public GatewayResource() {
+        DSACoapServer homeServer;
+
+        public GatewayResource(DSACoapServer server) {
 
             // set resource identifier
             super(Constants.MAIN_SERVER_NAME);
@@ -82,6 +115,8 @@ public class DSACoapServer extends CoapServer {
 
             // set display name
             getAttributes().setTitle(Constants.MAIN_SERVER_NAME);
+
+            homeServer = server;
         }
 
         @Override
@@ -100,64 +135,41 @@ public class DSACoapServer extends CoapServer {
         public void handlePOST(final CoapExchange exchange) {
             System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
 
-            JsonObject responseJson = new JsonObject(new String(exchange.getRequestPayload()));
+            JsonObject responseJson = Constants.extractPayload(exchange);
 
-            CoapLinkHandler linkHand = ((CoapLinkHandler) homeNode.getLink().getHandler());
-            int thisRid = linkHand.generateNewRid();
             int remoteRid = responseJson.get("rid");
+            int thisRid = coapLinkHandler.generateNewRid();
 
             String method = responseJson.get("method");
             switch (method) {
                 case "set":
                     //TODO: doSet()
                     responseJson = Constants.makeCloseReponse(remoteRid);
+                    homeServer.replyToRemoteBroker(exchange,responseJson);
                     break;
                 case "remove":
                     //Blank response
                     //TODO: doRemove();
                     //TODO: make sure the actions are actually performed
                     responseJson = Constants.makeCloseReponse(remoteRid);
+                    homeServer.replyToRemoteBroker(exchange,responseJson);
                     break;
                 case "invoke":
                     //Meaningful response
                 case "list":
                     //Need to create update servers
+                    homeServer.createNewRidResource(thisRid, remoteRid, exchange);
+                    homeServer.sendToLocalBroker(thisRid, responseJson);
+                    homeServer.replyWithNewResource(exchange,thisRid);
+                    break;
                 case "subscribe":
                 case "unsubscribe":
                     //Need to close update servers
                 case "close":
                     //Need to close update servers
+                default:
+                    homeServer.replyToRemoteBroker(exchange,responseJson);
             }
-
-            RidUpdateResource ridRes = new RidUpdateResource(thisRid);
-
-            localToRemoteRidHash.put(thisRid, remoteRid);
-            pendingResponseesHash.put(thisRid, exchange);
-            openRidsHash.put(thisRid, ridRes);
-
-            responseJson.put("rid", thisRid);
-            linkHand.getRequesterLink().getWriter().writeRequest(responseJson, false);
-
-
-
-//            		CoapClient client = this.createClient(exchange.getRequestText());
-//		CoapObserveRelation relation;
-//		relation = client.observe(handler);
-//		synchronized(ridRes.relationStorage) {
-//			relationStorage.put(new InetSocketAddress(exchange.getSourceAddress(), exchange.getSourcePort()), relation);
-//		}
-//
-//		Response response = new Response(ResponseCode.VALID);
-//		exchange.respond(response);
-
-            byte[] bytes = new byte[0];
-            try {
-                bytes = responseJson.toString().getBytes("utf-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            }
-
-            exchange.respond(CoAP.ResponseCode.CREATED, bytes);
         }
     }
 }

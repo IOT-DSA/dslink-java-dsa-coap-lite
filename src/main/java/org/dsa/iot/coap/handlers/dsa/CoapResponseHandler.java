@@ -1,8 +1,9 @@
-package org.dsa.iot.coap.handlers;
+package org.dsa.iot.coap.handlers.dsa;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.controllers.CoapServerController;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
@@ -19,11 +20,11 @@ import org.slf4j.LoggerFactory;
 public class CoapResponseHandler implements Handler<DataReceived>{
     private static final Logger LOG = LoggerFactory.getLogger(CoapRequestHandler.class);
 
-    DSLink link;
-    Map<Integer, CoapServerController> ridsToControllers = new ConcurrentHashMap<Integer, CoapServerController>();
+    CoapLinkHandler handleLink;
 
-    CoapResponseHandler(DSLink link) {
-        this.link = link;
+
+    public CoapResponseHandler(CoapLinkHandler handle) {
+        handleLink = handle;
     }
 
     @Override
@@ -33,11 +34,12 @@ public class CoapResponseHandler implements Handler<DataReceived>{
         for (Object object : array) {
             try {
                 JsonObject json = (JsonObject) object;
-                link.getRequester().parse(json);
+                if (!handleLink.handleRemoteDSAMessage(json))
+                    handleLink.getRequesterLink().getRequester().parse(json);
             } catch (RuntimeException e) {
                 LOG.error("Failed to parse json", e);
             }
         }
-        link.getWriter().writeAck(event.getMsgId());
+        handleLink.getRequesterLink().getWriter().writeAck(event.getMsgId());
     }
 }

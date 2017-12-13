@@ -4,7 +4,9 @@ import org.dsa.iot.coap.actions.CreateCoapClientAction;
 import org.dsa.iot.coap.actions.CreateCoapServerAction;
 import org.dsa.iot.coap.controllers.CoapClientController;
 import org.dsa.iot.coap.controllers.CoapServerController;
-import org.dsa.iot.coap.handlers.CoapRequestHandler;
+import org.dsa.iot.coap.handlers.dsa.CoapRequestHandler;
+import org.dsa.iot.coap.handlers.dsa.CoapResponseHandler;
+import org.dsa.iot.coap.resources.DSACoapServer;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkHandler;
 import org.dsa.iot.dslink.node.Node;
@@ -12,11 +14,14 @@ import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.ValueType;
+import org.dsa.iot.dslink.util.json.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CoapLinkHandler extends DSLinkHandler {
     private static final Logger LOG = LoggerFactory.getLogger(CoapLinkHandler.class);
@@ -25,12 +30,27 @@ public class CoapLinkHandler extends DSLinkHandler {
     private DSLink requesterLink;
     private DSLink responderLink;
     private final Set<Integer> usedRids = new HashSet<>();
+
     private int lastRid = 0;
-
     private CoapRequestHandler requestHandler;
-
     private boolean isRequesterInited = false;
 
+    private Map<Integer, DSACoapServer> ridsToControllers = new ConcurrentHashMap<>();
+    
+    public boolean handleRemoteDSAMessage(JsonObject json) {
+        System.out.println("Cuaght REMOTE: \n" + json);
+        Integer rid = json.get("rid");
+        if (rid == null) return false;
+        DSACoapServer server = ridsToControllers.get(rid);
+        if (server == null) return false;
+        server.sendRemoteResponse(json);
+        return true;
+    }
+
+    public void registerNewRid(int localRid, DSACoapServer server) {
+        ridsToControllers.put(localRid, server);
+    }
+    
     public int generateNewRid() {
         synchronized (usedRids) {
             int nextRid = lastRid + 1;
@@ -45,7 +65,7 @@ public class CoapLinkHandler extends DSLinkHandler {
             usedRids.remove(rid);
         }
     }
-
+    
     @Override
     public void onResponderInitialized(DSLink link) {
         super.onResponderInitialized(link);
@@ -53,7 +73,7 @@ public class CoapLinkHandler extends DSLinkHandler {
 
         rootNode = initRootNode(link);
 
-        requestHandler = new CoapRequestHandler(responderLink, rootNode);
+        requestHandler = new CoapRequestHandler(this, rootNode);
         responderLink.getWriter().setReqHandler(requestHandler);
 
         if (rootNode.getChildren() == null) {
@@ -107,7 +127,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     public void onRequesterInitialized(DSLink link) {
         super.onRequesterInitialized(link);
         requesterLink = link;
-        //requesterLink.getWriter().setRespHandler(new CoapResponseHandler(requesterLink));
+        requesterLink.getWriter().setRespHandler(new CoapResponseHandler(this));
         isRequesterInited = true;
     }
 
@@ -131,7 +151,6 @@ public class CoapLinkHandler extends DSLinkHandler {
 
     public void setupCoapClient(Node node) {
         CoapClientController controller = new CoapClientController(node);
-        requestHandler.addClient(controller);
         node.setMetaData(controller);
 
         try {

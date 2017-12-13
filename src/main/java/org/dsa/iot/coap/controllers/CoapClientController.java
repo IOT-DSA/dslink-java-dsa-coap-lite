@@ -155,20 +155,17 @@ public class CoapClientController {
     }
 
     public CoapResponse postToRemote(JsonObject json) {
-
         System.out.println("Emit: " + json);
-        byte[] input = new byte[0];
-        try {
-            input = json.toString().getBytes("utf-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-
+        byte[] input = Constants.jsonToBytes(json);
         return getClient().post(input, 0);
     }
 
+    public String getUriPrefix() {
+        return node.getConfig("coap_url").getString() + "/";
+    }
+
     public CoapClient getClient() {
-        String url = node.getConfig("coap_url").getString() + "/" + Constants.MAIN_SERVER_NAME;
+        String url = getUriPrefix() + Constants.MAIN_SERVER_NAME;
         CoapClient client = clients.get(url);
         if (client == null) {
             try {
@@ -180,7 +177,6 @@ public class CoapClientController {
 
             System.out.println(uri);
             client = new CoapClient(uri);
-            client.observe(new AsynchListener());
             clients.put(url, client);
         }
         return client;
@@ -237,15 +233,4 @@ public class CoapClientController {
         }
     }
 
-    class AsynchListener implements CoapHandler {
-        @Override
-        public void onLoad(CoapResponse response) {
-            System.out.println( "I Heard: " + response.getResponseText() );
-        }
-
-        @Override
-        public void onError() {
-            System.err.println("Error");
-        }
-    }
 }

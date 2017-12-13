@@ -1,7 +1,9 @@
-package org.dsa.iot.coap.handlers;
+package org.dsa.iot.coap.handlers.dsa;
 
+import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.coap.controllers.CoapClientController;
+import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
@@ -14,7 +16,9 @@ import org.eclipse.californium.core.CoapResponse;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -23,17 +27,16 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CoapRequestHandler implements Handler<DataReceived> {
 
-    private DSLink link;
+    private CoapLinkHandler coapLinkHandler;
     private Node rootNode;
-    Set<CoapClientController> clients = new HashSet<CoapClientController>();
-    Map<Integer, CoapClientController> ridsToControllers = new ConcurrentHashMap<Integer, CoapClientController>();
+    Map<Integer, CoapClient> ridsToClients = new ConcurrentHashMap<>();
 
-    public CoapRequestHandler(DSLink link, Node rootNode) {
-        this.link = link;
+    public CoapRequestHandler(CoapLinkHandler handle, Node rootNode) {
         this.rootNode = rootNode;
+        this.coapLinkHandler = handle;
     }
 
-    private CoapClientController getClientFromPath(String path) {
+    private CoapClientController getControllerFromPath(String path) {
         String nodeName = extractNodeName(path);
         return ((CoapClientController) rootNode.getChild(nodeName, false).getMetaData());
     }
@@ -43,14 +46,14 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         if (rawResponse.getPayload() == null) return null;
         String respString = new String(rawResponse.getPayload());
         System.out.printf("Got response: " + respString);
-        return null;
+        return Constants.extractPayload(rawResponse);
     }
 
     private String extractRemotePath(String path) {
         int idx = path.indexOf(Constants.REMOTE_NAME);
         if (idx >= 0) {
             String sub = path.substring(idx + Constants.REMOTE_NAME.length());
-            if (sub.length() > 0 ) return sub;
+            if (sub.length() > 0) return sub;
             else return "/";
         } else {
             return null;
@@ -67,10 +70,6 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         }
     }
 
-    synchronized public void addClient(CoapClientController client) {
-        clients.add(client);
-    }
-
     @Override
     public void handle(DataReceived event) {
         final JsonArray data = event.getData();
@@ -81,22 +80,30 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             String path = json.get("path");
 
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
-                //TODO: make sure the right RID path goes here
-
-                CoapClient cli = getClientFromPath(path).getClient();
-
                 String method = json.get("method");
                 json.put("path", extractRemotePath(path));
+                CoapResponse response = null;
                 switch (method) {
+                    //TODO: take care of the other cases
                     case "list":
-                    default:
-                        CoapResponse response = getClientFromPath(path).postToRemote(json);
-                        JsonObject resp = formulateResponse(response);
+                        CoapClientController cliContr = getControllerFromPath(path);
+                        response = cliContr.postToRemote(json);
+                        JsonObject obj = Constants.extractPayload(response);
+                        int rid = json.get("rid");
+                        String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
+                        CoapClient client = new CoapClient(uri);
+                        //TODO: create proper listener
+                        client.observe(new AsynchListener(coapLinkHandler));
+                        ridsToClients.put(rid, client);
                         break;
+                    default:
+                        JsonObject resp = formulateResponse(response);
+                        responses.add(resp);
                 }
+
             } else {
                 try {
-                    JsonObject resp = link.getResponder().parse(json);
+                    JsonObject resp = coapLinkHandler.getResponderLink().getResponder().parse(json);
                     responses.add(resp);
                 } catch (Exception e) {
                     JsonObject resp = new JsonObject();
@@ -119,7 +126,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             }
         }
         Integer msgId = event.getMsgId();
-        link.getWriter().writeRequestResponses(msgId, responses);
+        coapLinkHandler.getResponderLink().getWriter().writeRequestResponses(msgId, responses);
     }
 
 //        List<JsonObject> responses = new LinkedList<>();
