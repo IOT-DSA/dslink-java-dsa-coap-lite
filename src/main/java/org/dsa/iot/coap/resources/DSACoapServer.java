@@ -33,6 +33,7 @@ import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class DSACoapServer extends CoapServer {
@@ -40,7 +41,8 @@ public class DSACoapServer extends CoapServer {
     private CoapLinkHandler coapLinkHandler;
     private Map<Integer, Integer> localToRemoteRidHash = new HashMap<>();
     private Map<Integer, CoapExchange> pendingResponseesHash = new HashMap<>();
-    private Map<Integer, RidUpdateResource> openRidsHash = new HashMap<>();
+    private Map<Integer, RidUpdateResource> openRidsHash = new ConcurrentHashMap<>();
+    private Map<Integer, Integer> remoteToLocal = new ConcurrentHashMap<>();
     private Map<Integer, String> remoteResourceHash = new HashMap<>();
 
     /**
@@ -82,6 +84,14 @@ public class DSACoapServer extends CoapServer {
         add(ridRes);
     }
 
+    private void destroyRidResource(int localRid) {
+        RidUpdateResource ridRes = openRidsHash.remove(localRid);
+        if (ridRes != null) {
+            remove(ridRes);
+            ridRes.delete();
+        }
+    }
+
     private void sendToLocalBroker(int rid, JsonObject json) {
         json.put("rid", rid);
         coapLinkHandler.getRequesterLink().getWriter().writeRequest(json, false);
@@ -91,10 +101,28 @@ public class DSACoapServer extends CoapServer {
         exchange.respond(CoAP.ResponseCode.VALID, Constants.jsonToBytes(response));
     }
 
+    private void replyDeletedToRemoteBroker(CoapExchange exchange) {
+        exchange.respond(CoAP.ResponseCode.DELETED);
+    }
+
     private void replyWithNewResource(CoapExchange exchange, int newRid) {
         JsonObject response = new JsonObject();
         response.put(Constants.REMOTE_RID_FIELD, Constants.RID_PREFIX + newRid);
         exchange.respond(CoAP.ResponseCode.CREATED, Constants.jsonToBytes(response));
+    }
+
+    public int genOrGetLocalRid(int remoteRid) {
+        if (remoteToLocal.containsKey(remoteRid))
+            return remoteToLocal.get(remoteRid);
+
+        int nextRid = coapLinkHandler.genLocalRid();
+        remoteToLocal.put(remoteRid,nextRid);
+        return nextRid;
+    }
+
+    public void retireRemoteRid(int remoteRid) {
+        Integer rid = remoteToLocal.remove(remoteRid);
+        if (rid != null) coapLinkHandler.retireLocalRid(rid);
     }
 
     /*
@@ -134,30 +162,31 @@ public class DSACoapServer extends CoapServer {
         public void handlePOST(final CoapExchange exchange) {
             System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
 
-            JsonObject responseJson = Constants.extractPayload(exchange);
+            JsonObject json = Constants.extractPayload(exchange);
 
-            int remoteRid = responseJson.get("rid");
-            int thisRid = coapLinkHandler.generateNewRid();
+            int remoteRid = json.get("rid");
+            int thisRid = homeServer.genOrGetLocalRid(remoteRid);
 
-            String method = responseJson.get("method");
+            String method = json.get("method");
             switch (method) {
                 case "set":
-                    homeServer.sendToLocalBroker(thisRid, responseJson);
-                    responseJson = Constants.makeCloseReponse(remoteRid);
-                    homeServer.replyToRemoteBroker(exchange,responseJson);
+                    homeServer.sendToLocalBroker(thisRid, json);
+                    json = Constants.makeCloseReponse(remoteRid);
+                    homeServer.replyToRemoteBroker(exchange,json);
+                    homeServer.retireRemoteRid(remoteRid);
                     break;
                 case "remove":
                     //TODO: doRemove(); is the dslink reponsible for keeping track of defunct rids?
-                    homeServer.sendToLocalBroker(thisRid, responseJson);
-                    responseJson = Constants.makeCloseReponse(remoteRid);
-                    homeServer.replyToRemoteBroker(exchange,responseJson);
+                    homeServer.sendToLocalBroker(thisRid, json);
+                    json = Constants.makeCloseReponse(remoteRid);
+                    homeServer.replyToRemoteBroker(exchange,json);
                     break;
                 case "invoke":
                     //Meaningful response
                 case "list":
                     //Need to create update servers
                     homeServer.createNewRidResource(thisRid, remoteRid, exchange);
-                    homeServer.sendToLocalBroker(thisRid, responseJson);
+                    homeServer.sendToLocalBroker(thisRid, json);
                     homeServer.replyWithNewResource(exchange,thisRid);
                     break;
                 case "subscribe":
@@ -165,8 +194,13 @@ public class DSACoapServer extends CoapServer {
                     //Need to close update servers
                 case "close":
                     //Need to close update servers
+                    homeServer.sendToLocalBroker(thisRid, json);
+                    homeServer.destroyRidResource(thisRid);
+                    homeServer.retireRemoteRid(remoteRid);
+                    homeServer.replyDeletedToRemoteBroker(exchange);
+                    break;
                 default:
-                    homeServer.replyToRemoteBroker(exchange,responseJson);
+                    homeServer.replyToRemoteBroker(exchange,json);
             }
         }
     }

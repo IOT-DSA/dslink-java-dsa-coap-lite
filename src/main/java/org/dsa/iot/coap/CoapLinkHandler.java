@@ -31,6 +31,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     private DSLink responderLink;
     private final Set<Integer> usedRids = new HashSet<>();
 
+
     private int lastRid = 0;
     private CoapRequestHandler requestHandler;
     private boolean isRequesterInited = false;
@@ -50,19 +51,10 @@ public class CoapLinkHandler extends DSLinkHandler {
     public void registerNewRid(int localRid, DSACoapServer server) {
         ridsToControllers.put(localRid, server);
     }
-    
-    public int generateNewRid() {
-        synchronized (usedRids) {
-            int nextRid = lastRid + 1;
-            while (usedRids.contains(nextRid)) { if (nextRid++ < 0) nextRid = 0;}
-            lastRid = nextRid;
-            return nextRid;
-        }
-    }
 
-    public void retireRid(int rid) {
+    public void retireLocalRid(int localRid) {
         synchronized (usedRids) {
-            usedRids.remove(rid);
+            usedRids.remove(localRid);
         }
     }
     
@@ -179,5 +171,15 @@ public class CoapLinkHandler extends DSLinkHandler {
 
     public DSLink getResponderLink() {
         return responderLink;
+    }
+
+    public int genLocalRid() {
+        int nextRid;
+        synchronized (usedRids) {
+            nextRid = lastRid + 1;
+            while (usedRids.contains(nextRid)) { if (nextRid++ < 0) nextRid = 0;}
+            lastRid = nextRid;
+        }
+        return nextRid;
     }
 }

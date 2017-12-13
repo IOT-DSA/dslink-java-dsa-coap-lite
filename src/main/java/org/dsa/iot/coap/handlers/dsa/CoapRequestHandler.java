@@ -82,21 +82,24 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
                 String method = json.get("method");
                 json.put("path", extractRemotePath(path));
+                //Post to remote and get reponse
                 CoapClientController cliContr = getControllerFromPath(path);
                 CoapResponse response = cliContr.postToRemote(json);
+                //Do method specific steps
                 switch (method) {
                     case "unsubscribe":
                     case "close":
-                        //TODO: properly close
+                        CoapObserveRelation obs = ridsToObservations.remove(json.get("rid"));
+                        if (obs != null) obs.proactiveCancel();
+                        break;
                     case "subscribe":
                     case "list":
                         JsonObject obj = Constants.extractPayload(response);
-                        int rid = json.get("rid");
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
                         //TODO: verify listener
                         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
-                        ridsToObservations.put(rid, observation);
+                        ridsToObservations.put(json.get("rid"), observation);
                         break;
                     case "invoke":
                         //TODO: handle streaming

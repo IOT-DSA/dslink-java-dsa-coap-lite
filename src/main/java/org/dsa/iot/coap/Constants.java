@@ -9,7 +9,7 @@ import java.io.UnsupportedEncodingException;
 public class Constants {
     public static final String CONN = "conn";
     public static final String REMOTE_NAME = "RemoteDSA";
-    public static final String MAIN_SERVER_NAME = "helloWorld";
+    public static final String MAIN_SERVER_NAME = "__DSACoapGateway";
     public static final String RID_PREFIX = "__rid_";
     public static final String REMOTE_RID_FIELD = "RemoteRid";
     public static final String BLANK_KEY = "BlankJson";
