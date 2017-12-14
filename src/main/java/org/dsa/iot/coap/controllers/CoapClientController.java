@@ -1,6 +1,8 @@
 package org.dsa.iot.coap.controllers;
 
+import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -11,10 +13,7 @@ import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.dsa.iot.shared.SharedObjects;
-import org.eclipse.californium.core.CoapClient;
-import org.eclipse.californium.core.CoapHandler;
-import org.eclipse.californium.core.CoapResponse;
-import org.eclipse.californium.core.Utils;
+import org.eclipse.californium.core.*;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
@@ -35,6 +34,7 @@ public class CoapClientController {
 
     private Node node;
     private URI uri;
+    private CoapLinkHandler coapLinkHandler;
 
     private Endpoint endpoint;
     private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
@@ -43,8 +43,9 @@ public class CoapClientController {
 
     private Map<String, CoapClient> clients = new ConcurrentHashMap<>();
 
-    public CoapClientController(Node node) {
+    public CoapClientController(Node node, CoapLinkHandler coapLinkHandler) {
         this.node = node;
+        this.coapLinkHandler = coapLinkHandler;
         executor.setMaximumPoolSize(128);
         executor.setKeepAliveTime(2, TimeUnit.MINUTES);
     }
@@ -109,6 +110,10 @@ public class CoapClientController {
 //        } catch (SocketException e) {
 //            System.err.println("Failed to initialize server: " + e.getMessage());
 //        }
+        String uri = getUriPrefix() + Constants.RID_PREFIX + 0;
+        CoapClient client = new CoapClient(uri);
+        CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
+        coapLinkHandler.add0Observer(observation);
 
         node.getChild("status", false).setValue(new Value("Ready"));
     }
@@ -155,7 +160,7 @@ public class CoapClientController {
     }
 
     public CoapResponse postToRemote(JsonObject json) {
-        System.out.println("Emit: " + json);
+        //System.out.println("Emit: " + json); //DEBUG
         byte[] input = Constants.jsonToBytes(json);
         return getClient().post(input, 0);
     }

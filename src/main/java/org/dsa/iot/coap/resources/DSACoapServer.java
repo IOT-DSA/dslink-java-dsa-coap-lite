@@ -39,11 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DSACoapServer extends CoapServer {
 
     private CoapLinkHandler coapLinkHandler;
-    private Map<Integer, Integer> localToRemoteRidHash = new HashMap<>();
-    private Map<Integer, CoapExchange> pendingResponseesHash = new HashMap<>();
     private Map<Integer, RidUpdateResource> openRidsHash = new ConcurrentHashMap<>();
     private Map<Integer, Integer> remoteToLocal = new ConcurrentHashMap<>();
-    private Map<Integer, String> remoteResourceHash = new HashMap<>();
 
     /**
      * Add individual endpoints listening on default CoAP port on all IPv4 addresses of all network interfaces.
@@ -66,6 +63,10 @@ public class DSACoapServer extends CoapServer {
         coapLinkHandler = ((CoapLinkHandler) homeNode.getLink().getHandler());
         // provide an instance of a Hello-World resource
         add(new GatewayResource(this));
+
+        //Setup rid 0 for subscriptions
+        createNewRidResource(0,0);
+        remoteToLocal.put(0,0);
     }
 
     public void sendRemoteResponse(JsonObject json) {
@@ -73,12 +74,8 @@ public class DSACoapServer extends CoapServer {
         res.postDSAUpdate(json);
     }
 
-    private void createNewRidResource(int localRid, int remoteRid, CoapExchange pending) {
-
+    private void createNewRidResource(int localRid, int remoteRid) {
         RidUpdateResource ridRes = new RidUpdateResource(localRid, remoteRid);
-
-        localToRemoteRidHash.put(localRid, remoteRid);
-        pendingResponseesHash.put(localRid, pending);
         openRidsHash.put(localRid, ridRes);
         coapLinkHandler.registerNewRid(localRid, this);
         add(ridRes);
@@ -160,7 +157,7 @@ public class DSACoapServer extends CoapServer {
 
         @Override
         public void handlePOST(final CoapExchange exchange) {
-            System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
+            //System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
 
             JsonObject json = Constants.extractPayload(exchange);
 
@@ -180,16 +177,20 @@ public class DSACoapServer extends CoapServer {
                     homeServer.sendToLocalBroker(thisRid, json);
                     json = Constants.makeCloseReponse(remoteRid);
                     homeServer.replyToRemoteBroker(exchange,json);
+                    homeServer.retireRemoteRid(remoteRid);
                     break;
                 case "invoke":
                     //Meaningful response
                 case "list":
-                    //Need to create update servers
-                    homeServer.createNewRidResource(thisRid, remoteRid, exchange);
+                    homeServer.createNewRidResource(thisRid, remoteRid);
                     homeServer.sendToLocalBroker(thisRid, json);
                     homeServer.replyWithNewResource(exchange,thisRid);
                     break;
                 case "subscribe":
+                    json = Constants.makeCloseReponse(remoteRid);
+                    homeServer.replyToRemoteBroker(exchange,json);
+                    homeServer.retireRemoteRid(remoteRid);
+                    break;
                 case "unsubscribe":
                     //Need to close update servers
                 case "close":

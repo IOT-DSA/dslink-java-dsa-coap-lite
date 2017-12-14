@@ -24,8 +24,8 @@ public class AsynchListener implements CoapHandler {
 
     @Override
     public void onLoad(CoapResponse response) {
-        System.out.println("I Heard THIS:"); //DEBUG
-        if (response.getPayload() != null) System.out.println(new String(response.getPayload())); //DEBUG
+        //System.out.println("I Heard THIS:"); //DEBUG
+        //if (response.getPayload() != null) System.out.println(new String(response.getPayload())); //DEBUG
         JsonObject json = Constants.extractPayload(response);
         if (notBlank(json)) linkHandler.getResponderLink().getWriter().writeResponse(json);
     }

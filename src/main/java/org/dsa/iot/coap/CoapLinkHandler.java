@@ -15,6 +15,7 @@ import org.dsa.iot.dslink.node.actions.Action;
 import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonObject;
+import org.eclipse.californium.core.CoapObserveRelation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,13 +40,25 @@ public class CoapLinkHandler extends DSLinkHandler {
     private Map<Integer, DSACoapServer> ridsToControllers = new ConcurrentHashMap<>();
     
     public boolean handleRemoteDSAMessage(JsonObject json) {
-        System.out.println("Cuaght REMOTE: \n" + json);
+        //System.out.println("Cuaght REMOTE: \n" + json); //DEBUG
         Integer rid = json.get("rid");
         if (rid == null) return false;
+        else if (rid == 0) {
+            handleSubscriptionUpdate(json);
+            return true;
+        }
         DSACoapServer server = ridsToControllers.get(rid);
         if (server == null) return false;
         server.sendRemoteResponse(json);
         return true;
+    }
+
+    public void add0Observer(CoapObserveRelation obs) {
+        requestHandler.add0Observer(obs);
+    }
+
+    private void handleSubscriptionUpdate(JsonObject json) {
+        System.out.println("Well, shit...");
     }
 
     public void registerNewRid(int localRid, DSACoapServer server) {
@@ -142,7 +155,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     }
 
     public void setupCoapClient(Node node) {
-        CoapClientController controller = new CoapClientController(node);
+        CoapClientController controller = new CoapClientController(node, this);
         node.setMetaData(controller);
 
         try {
@@ -177,7 +190,7 @@ public class CoapLinkHandler extends DSLinkHandler {
         int nextRid;
         synchronized (usedRids) {
             nextRid = lastRid + 1;
-            while (usedRids.contains(nextRid)) { if (nextRid++ < 0) nextRid = 0;}
+            while (usedRids.contains(nextRid)) { if (++nextRid < 0) nextRid = 1;}
             lastRid = nextRid;
         }
         return nextRid;

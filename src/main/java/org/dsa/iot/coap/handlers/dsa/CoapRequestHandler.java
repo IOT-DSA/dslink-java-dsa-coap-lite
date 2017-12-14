@@ -29,7 +29,11 @@ public class CoapRequestHandler implements Handler<DataReceived> {
 
     private CoapLinkHandler coapLinkHandler;
     private Node rootNode;
-    Map<Integer, CoapObserveRelation> ridsToObservations = new ConcurrentHashMap<>();
+    private Map<Integer, CoapObserveRelation> ridsToObservations = new ConcurrentHashMap<>();
+
+    public void add0Observer(CoapObserveRelation obs) {
+        ridsToObservations.put(0, obs);
+    }
 
     public CoapRequestHandler(CoapLinkHandler handle, Node rootNode) {
         this.rootNode = rootNode;
@@ -79,6 +83,10 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             JsonObject json = (JsonObject) object;
             String path = json.get("path");
 
+            if (json.get("method") != null)
+                if(json.get("method").equals("subscribe"))
+                    System.out.println(json);
+
             if (path != null && path.contains(Constants.REMOTE_NAME)) {
                 String method = json.get("method");
                 json.put("path", extractRemotePath(path));
@@ -88,11 +96,16 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 //Do method specific steps
                 switch (method) {
                     case "unsubscribe":
+                        //nothing to do
+                        break;
                     case "close":
                         CoapObserveRelation obs = ridsToObservations.remove(json.get("rid"));
                         if (obs != null) obs.proactiveCancel();
                         break;
                     case "subscribe":
+                        //Nothing to do
+                        System.out.println("SUBSCRIBED!"); //DEBUG
+                        break;
                     case "list":
                         JsonObject obj = Constants.extractPayload(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
