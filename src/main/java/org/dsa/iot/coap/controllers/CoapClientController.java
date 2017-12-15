@@ -110,12 +110,22 @@ public class CoapClientController {
 //        } catch (SocketException e) {
 //            System.err.println("Failed to initialize server: " + e.getMessage());
 //        }
-        String uri = getUriPrefix() + Constants.RID_PREFIX + 0;
+        Objects.getDaemonThreadPool().schedule(this::setupSubscriptionObserver,0, TimeUnit.SECONDS);
+
+        node.getChild("status", false).setValue(new Value("Ready"));
+    }
+
+    private void setupSubscriptionObserver() {
+        JsonObject ridReq = new JsonObject();
+        ridReq.put(Constants.GIMME, Constants.RID_ZERO_HANDLE);
+        CoapResponse resp = postToRemote(ridReq);
+        JsonObject cont = Constants.extractPayload(resp);
+        String rid0ID = cont.get(Constants.GIMME);
+
+        String uri = getUriPrefix() + rid0ID;
         CoapClient client = new CoapClient(uri);
         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
         coapLinkHandler.add0Observer(observation);
-
-        node.getChild("status", false).setValue(new Value("Ready"));
     }
 
     private void makeEndpoint() {

@@ -16,6 +16,7 @@ import org.eclipse.californium.core.CoapResponse;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,11 @@ public class CoapRequestHandler implements Handler<DataReceived> {
     }
 
     private CoapClientController getControllerFromPath(String path) {
-        String nodeName = extractNodeName(path);
+        String nodeName = Constants.extractNodeName(path);
+        return getControllerFromNodeName(nodeName);
+    }
+
+    private CoapClientController getControllerFromNodeName(String nodeName) {
         return ((CoapClientController) rootNode.getChild(nodeName, false).getMetaData());
     }
 
@@ -53,24 +58,27 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         return Constants.extractPayload(rawResponse);
     }
 
-    private String extractRemotePath(String path) {
-        int idx = path.indexOf(Constants.REMOTE_NAME);
-        if (idx >= 0) {
-            String sub = path.substring(idx + Constants.REMOTE_NAME.length());
-            if (sub.length() > 0) return sub;
-            else return "/";
-        } else {
-            return null;
-        }
-    }
+    private void generateAndAddStandardResponses(JsonObject json, List<JsonObject> responses) {
+        try {
+            JsonObject resp = coapLinkHandler.getResponderLink().getResponder().parse(json);
+            responses.add(resp);
+        } catch (Exception e) {
+            JsonObject resp = new JsonObject();
+            Integer rid = json.get("rid");
+            if (rid != null) {
+                resp.put("rid", rid);
+            }
+            resp.put("stream", StreamState.CLOSED.getJsonName());
 
-    private String extractNodeName(String path) {
-        int idx = path.indexOf(Constants.REMOTE_NAME);
-        if (idx >= 0) {
-            String[] split = path.substring(0, idx).split("/");
-            return split[split.length - 1];
-        } else {
-            return null;
+            JsonObject err = new JsonObject();
+            err.put("msg", e.getMessage());
+            { // Build stack trace
+                StringWriter writer = new StringWriter();
+                e.printStackTrace(new PrintWriter(writer));
+                err.put("detail", writer.toString());
+            }
+            resp.put("error", err);
+            responses.add(resp);
         }
     }
 
@@ -82,15 +90,36 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         for (Object object : data) {
             JsonObject json = (JsonObject) object;
             String path = json.get("path");
+            String method = json.get("method");
 
-            if (json.get("method") != null)
-                if(json.get("method").equals("subscribe"))
-                    System.out.println(json);
-
-            if (path != null && path.contains(Constants.REMOTE_NAME)) {
-                String method = json.get("method");
-                json.put("path", extractRemotePath(path));
-                //Post to remote and get reponse
+            //Handle subscriptions
+            if (method != null && method.equals("subscribe")) {
+                JsonArray local = new JsonArray();
+                //System.out.println("NEW SUB REQUEST:" + json); //DEBUG
+                Map<String,JsonArray> remote = new HashMap<>();
+                JsonArray paths = json.get("paths");
+                int rid = json.get("rid");
+                Constants.sortLocalVsRemote(paths,local,remote);
+                //Send local subscription requests
+                if (local.size() > 0) {
+                    JsonObject localReq = Constants.createSubReq(local, rid);
+                    generateAndAddStandardResponses(localReq,responses);
+                    //System.out.println(localReq); //DEBUG
+                }
+                //Send remote subscription requests
+                if (remote.size() > 0) {
+                    for (Map.Entry<String, JsonArray> ent : remote.entrySet()) {
+                        CoapClientController cont = getControllerFromNodeName(ent.getKey());
+                        JsonObject remoteReq = Constants.createSubReq(ent.getValue(), rid);
+                        CoapResponse resp = cont.postToRemote(remoteReq);
+                        //System.out.println("SENT TO REMOTE:" + remoteReq); //DEBUG
+                    }
+                }
+            }
+            //Handle remote method invocations
+            else if (path != null && path.contains(Constants.REMOTE_NAME)) {
+                json.put("path", Constants.extractRemotePath(path));
+                //Post to remote and get response
                 CoapClientController cliContr = getControllerFromPath(path);
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps
@@ -99,14 +128,12 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         //nothing to do
                         break;
                     case "close":
+                        //destroy local observers
                         CoapObserveRelation obs = ridsToObservations.remove(json.get("rid"));
                         if (obs != null) obs.proactiveCancel();
                         break;
-                    case "subscribe":
-                        //Nothing to do
-                        System.out.println("SUBSCRIBED!"); //DEBUG
-                        break;
                     case "list":
+                        //create listener for the rid that will transmit list data
                         JsonObject obj = Constants.extractPayload(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
@@ -122,29 +149,10 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         JsonObject resp = formulateResponse(response);
                         responses.add(resp);
                 }
-
-            } else {
-                try {
-                    JsonObject resp = coapLinkHandler.getResponderLink().getResponder().parse(json);
-                    responses.add(resp);
-                } catch (Exception e) {
-                    JsonObject resp = new JsonObject();
-                    Integer rid = json.get("rid");
-                    if (rid != null) {
-                        resp.put("rid", rid);
-                    }
-                    resp.put("stream", StreamState.CLOSED.getJsonName());
-
-                    JsonObject err = new JsonObject();
-                    err.put("msg", e.getMessage());
-                    { // Build stack trace
-                        StringWriter writer = new StringWriter();
-                        e.printStackTrace(new PrintWriter(writer));
-                        err.put("detail", writer.toString());
-                    }
-                    resp.put("error", err);
-                    responses.add(resp);
-                }
+            }
+            //Handle local method invocations
+            else {
+                generateAndAddStandardResponses(json, responses);
             }
         }
         Integer msgId = event.getMsgId();

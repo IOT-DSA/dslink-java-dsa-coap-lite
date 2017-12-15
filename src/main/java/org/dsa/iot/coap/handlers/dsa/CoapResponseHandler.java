@@ -34,6 +34,7 @@ public class CoapResponseHandler implements Handler<DataReceived>{
         for (Object object : array) {
             try {
                 JsonObject json = (JsonObject) object;
+                //System.out.println("HANDELED RESPONSE:" + json); //DEBUG
                 if (!handleLink.handleRemoteDSAMessage(json))
                     handleLink.getRequesterLink().getRequester().parse(json);
             } catch (RuntimeException e) {
