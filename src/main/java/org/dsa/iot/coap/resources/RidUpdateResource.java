@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @author James (Juris) Puchin
  * Created on 12/10/2017
  */
-public class RidUpdateResource extends CoapResource {
+public class RidUpdateResource extends CoapResource implements UpdateResourceInterface {
 
     private Queue<JsonObject> messageQue;
     private boolean lossless;
@@ -53,7 +53,7 @@ public class RidUpdateResource extends CoapResource {
     @Override
     public void handleGET(CoapExchange exchange) {
         exchange.respond(latest.toString());
-        System.out.println("I AM SENDING THIS:" + latest); //DEBUG
+        //System.out.println("I AM SENDING THIS:" + latest); //DEBUG
 
         if (lossless) {
             synchronized (waiting) {

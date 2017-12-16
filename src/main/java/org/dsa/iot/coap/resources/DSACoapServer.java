@@ -39,8 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DSACoapServer extends CoapServer {
 
     private CoapLinkHandler coapLinkHandler;
-    private RidUpdateResource rid0Resource;
-    private Map<Integer, RidUpdateResource> openRidsHash = new ConcurrentHashMap<>();
+    private CoapResource rid0Resource;
+    private Map<Integer, CoapResource> openRidsHash = new ConcurrentHashMap<>();
     private Map<Integer, Integer> remoteToLocalSid = new ConcurrentHashMap<>();
     private Map<Integer, Integer> remoteToLocalRid = new ConcurrentHashMap<>();
 
@@ -74,26 +74,27 @@ public class DSACoapServer extends CoapServer {
         if (rid0Resource == null) {
             int rid0 = coapLinkHandler.genLocalId();
             rid0Resource = new RidUpdateResource(rid0, 0, true);
+            //rid0Resource = new SidUpdateResource(rid0);
             add(rid0Resource);
         }
     }
 
     private void createNewRidResource(int localRid, int remoteRid) {
-        RidUpdateResource ridRes = new RidUpdateResource(localRid, remoteRid, true);
+        CoapResource ridRes = new RidUpdateResource(localRid, remoteRid, true);
         openRidsHash.put(localRid, ridRes);
         coapLinkHandler.registerNewRid(localRid, ridRes);
         add(ridRes);
     }
 
     private void destroyRidResource(int localRid) {
-        RidUpdateResource ridRes = openRidsHash.remove(localRid);
+        CoapResource ridRes = openRidsHash.remove(localRid);
         if (ridRes != null) {
             remove(ridRes);
             ridRes.delete();
         }
     }
 
-    private void localizeSids(JsonObject json) {
+    private void localizeSubSids(JsonObject json) {
         createRid0Res();
         JsonArray paths = json.get("paths");
         if (paths != null) {
@@ -108,6 +109,18 @@ public class DSACoapServer extends CoapServer {
         } else {
             throw new RuntimeException("Subscribe request has not paths!");
         }
+    }
+
+    private void localizeUnsubSids(JsonObject json) {
+        JsonArray remoteSids = json.get("sids");
+        JsonArray localSids = new JsonArray();
+        for (Object remSid : remoteSids) {
+            Integer locSid = remoteToLocalSid.get(remSid);
+            if (locSid != null) {
+                localSids.add(locSid);
+            }
+        }
+        json.put("sids", localSids);
     }
 
     private void sendToLocalBroker(int rid, JsonObject json) {
@@ -143,9 +156,12 @@ public class DSACoapServer extends CoapServer {
         if (localRid != null) coapLinkHandler.retireLocalId(localRid);
     }
 
-    public void retireRemoteSid(int remoteSid) {
-        Integer localSid = remoteToLocalSid.remove(remoteSid);
-        if (localSid != null) coapLinkHandler.retireLocalId(localSid);
+    public void retireRemoteSids(JsonArray remoteSids) {
+        for (Object sid : remoteSids) {
+            int remoteSid = (int) sid;
+            Integer localSid = remoteToLocalSid.remove(remoteSid);
+            if (localSid != null) coapLinkHandler.retireLocalId(localSid);
+        }
     }
 
     /*
@@ -230,14 +246,17 @@ public class DSACoapServer extends CoapServer {
                     homeServer.replyWithNewResource(exchange,thisRid);
                     break;
                 case "subscribe":
-                    homeServer.localizeSids(json);
+                    System.out.println("SUBSCRIBE RECEIVED:"+ json); //DEBUG
+                    homeServer.localizeSubSids(json);
                     forwardAndClose(thisRid, remoteRid, json, exchange);
-                    //System.out.println("SUBSCRIBE FROWARDED:"+ json); //DEBUG
+                    System.out.println("SUBSCRIBE FROWARDED:"+ json); //DEBUG
                     break;
                 case "unsubscribe":
                     //Need to close update servers
+                    System.out.println("UNSUBSCRIBE RECEIVED:"+ json); //DEBUG
+                    homeServer.localizeUnsubSids(json);
                     forwardAndClose(thisRid, remoteRid, json, exchange);
-                    homeServer.retireRemoteSid(thisRid);
+                    homeServer.retireRemoteSids(json.get("sids"));
                     break;
                 case "close":
                     //Need to close update servers

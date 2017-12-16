@@ -38,7 +38,9 @@ public class Constants {
     }
 
     public static JsonObject extractPayload(CoapResponse response) {
-        return new JsonObject(new String(response.getPayload()));
+        byte[] ar = response.getPayload();
+        if (ar == null) return null;
+        return new JsonObject(new String(ar));
     }
 
     public static JsonObject createSubReq(JsonArray paths, int rid) {
@@ -49,6 +51,14 @@ public class Constants {
         return res;
     }
 
+    public static JsonObject createUnsubReq(JsonArray sidArray, int rid) {
+        JsonObject res = new JsonObject();
+        res.put("method", "unsubscribe");
+        res.put("rid", rid);
+        res.put("sids", sidArray);
+        return res;
+    }
+
     public static JsonObject createSidUpd(JsonArray updates) {
         JsonObject ret = new JsonObject();
         ret.put("rid", 0);
@@ -56,6 +66,42 @@ public class Constants {
         return ret;
     }
 
+    public static JsonObject createSidUpd(Map<Integer,Object> updates) {
+        JsonArray upAr = new JsonArray();
+        for (Map.Entry<Integer,Object> ent : updates.entrySet()) {
+            upAr.add(ent.getValue());
+        }
+        JsonObject ret = new JsonObject();
+        ret.put("rid", 0);
+        ret.put("updates", upAr);
+        return ret;
+    }
+
+    public static int getAndReplaceSid(Object json, Map<Integer,Integer> replaceMap) {
+        int sid;
+        if (json instanceof JsonObject) {
+            sid = ((JsonObject) json).get("sid");
+            ((JsonObject) json).put("sid", replaceMap.get(sid));
+        } else if (json instanceof JsonArray) {
+            sid = ((JsonArray) json).get(0);
+            ((JsonArray) json).set(0, replaceMap.get(sid));
+        } else {
+            throw new RuntimeException("Could not find sid");
+        }
+        return sid;
+    }
+
+    public static int getSid(Object json) {
+        int sid;
+        if (json instanceof JsonObject) {
+            sid = ((JsonObject) json).get("sid");
+        } else if (json instanceof JsonArray) {
+            sid = ((JsonArray) json).get(0);
+        } else {
+            throw new RuntimeException("Could not find sid");
+        }
+        return sid;
+    }
 
     public static void sortLocalVsRemote(JsonArray paths, JsonArray local, Map<String, JsonArray> remote) {
         for (Object subReq : paths) {

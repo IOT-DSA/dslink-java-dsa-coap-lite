@@ -7,6 +7,7 @@ import org.dsa.iot.coap.controllers.CoapServerController;
 import org.dsa.iot.coap.handlers.dsa.CoapRequestHandler;
 import org.dsa.iot.coap.handlers.dsa.CoapResponseHandler;
 import org.dsa.iot.coap.resources.RidUpdateResource;
+import org.dsa.iot.coap.resources.UpdateResourceInterface;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkHandler;
 import org.dsa.iot.dslink.node.Node;
@@ -17,6 +18,7 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapObserveRelation;
+import org.eclipse.californium.core.CoapResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +41,8 @@ public class CoapLinkHandler extends DSLinkHandler {
     private CoapRequestHandler requestHandler;
     private boolean isRequesterInited = false;
 
-    private Map<Integer, RidUpdateResource> ridsToResources = new ConcurrentHashMap<>();
-    private Map<Integer, RidUpdateResource> sidsToResources = new ConcurrentHashMap<>();
+    private Map<Integer, CoapResource> ridsToResources = new ConcurrentHashMap<>();
+    private Map<Integer, CoapResource> sidsToResources = new ConcurrentHashMap<>();
     private Map<Integer, Integer> localToRemoteSid = new ConcurrentHashMap<>();
 
     public boolean handleRemoteDSAMessage(JsonObject json) {
@@ -49,10 +51,10 @@ public class CoapLinkHandler extends DSLinkHandler {
         else if (rid == 0) {
             return handleSubscriptionUpdate(json);
         }
-        RidUpdateResource res = ridsToResources.get(rid);
+        CoapResource res = ridsToResources.get(rid);
         if (res == null) return false;
-        System.out.println("Cuaght REMOTE: \n" + json); //DEBUG
-        res.postDSAUpdate(json);
+        //System.out.println("Cought REMOTE: \n" + json); //DEBUG
+        ((UpdateResourceInterface) res).postDSAUpdate(json);
         return true;
     }
 
@@ -60,39 +62,22 @@ public class CoapLinkHandler extends DSLinkHandler {
         requestHandler.add0Observer(obs);
     }
 
-    /**
-     * Converts the sids of the update to the remote version.
-     * @param json json object or array containing an update message
-     * @return local sid
-     */
-    private int convertSidToRemote(Object json) {
-        int sid;
-        if (json instanceof JsonObject) {
-            sid = ((JsonObject) json).get("sid");
-            ((JsonObject) json).put("sid", localToRemoteSid.get(sid));
-        } else if (json instanceof JsonArray) {
-            sid = ((JsonArray) json).get(0);
-            ((JsonArray) json).set(0, localToRemoteSid.get(sid));
-        } else {
-            throw new RuntimeException("Could not find sid");
-        }
-        return sid;
-    }
-
     private boolean handleSubscriptionUpdate(JsonObject json) {
         //TODO: check all sids, combine remote into batches, fix sids to match remote, send each batch to right resource
         //TODO: pass all locals to be handled locally
         JsonArray updates = json.get("updates");
-        Map <RidUpdateResource, JsonArray> resMap = new HashMap<>();
+        Map <CoapResource, JsonArray> resMap = new HashMap<>();
         for (Object update : updates) {
-            int sid = convertSidToRemote(update);
-            RidUpdateResource res = sidsToResources.get(sid);
-            if (resMap.containsKey(res)) resMap.get(res).add(update);
-            else resMap.put(res, new JsonArray().add(update));
+            int sid = Constants.getAndReplaceSid(update, localToRemoteSid);
+            CoapResource res = sidsToResources.get(sid);
+            if (res != null) {
+                if (resMap.containsKey(res)) resMap.get(res).add(update);
+                else resMap.put(res, new JsonArray().add(update));
+            }
         }
 
-        for (Map.Entry<RidUpdateResource,JsonArray> ent : resMap.entrySet()) {
-            ent.getKey().postDSAUpdate(Constants.createSidUpd(ent.getValue()));
+        for (Map.Entry<CoapResource,JsonArray> ent : resMap.entrySet()) {
+            ((UpdateResourceInterface) ent.getKey()).postDSAUpdate(Constants.createSidUpd(ent.getValue()));
         }
 
         return false;
@@ -108,11 +93,11 @@ public class CoapLinkHandler extends DSLinkHandler {
         return nextId;
     }
 
-    public void registerNewRid(int localRid, RidUpdateResource res) {
+    public void registerNewRid(int localRid, CoapResource res) {
         ridsToResources.put(localRid, res);
     }
 
-    public void registerNewSid(int localSid, int remoteSid, RidUpdateResource res) {
+    public void registerNewSid(int localSid, int remoteSid, CoapResource res) {
         sidsToResources.put(localSid, res);
         localToRemoteSid.put(localSid,remoteSid);
     }

@@ -28,12 +28,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class CoapRequestHandler implements Handler<DataReceived> {
 
+    private Map<Integer, CoapClientController> ridToController = new ConcurrentHashMap<>();
+    private Map<Integer, CoapClientController> sidToController = new ConcurrentHashMap<>();
+
     private CoapLinkHandler coapLinkHandler;
     private Node rootNode;
-    private Map<Integer, CoapObserveRelation> ridsToObservations = new ConcurrentHashMap<>();
+    private Map<Integer, CoapObserveRelation> ridToObservation = new ConcurrentHashMap<>();
 
     public void add0Observer(CoapObserveRelation obs) {
-        ridsToObservations.put(0, obs);
+        ridToObservation.put(0, obs);
     }
 
     public CoapRequestHandler(CoapLinkHandler handle, Node rootNode) {
@@ -82,6 +85,19 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         }
     }
 
+    private void parseAndRemoveClients(JsonObject json, JsonArray local, Map<CoapClientController, JsonArray> remote) {
+        JsonArray sids = json.get("sids");
+        for (Object sid : sids) {
+            CoapClientController cont = sidToController.remove(sid);
+            if (cont != null) {
+                if (remote.containsKey(cont)) remote.get(cont).add(sid);
+                else remote.put(cont, new JsonArray().add(sid));
+            } else {
+                local.add(sid);
+            }
+        }
+    }
+
     @Override
     public void handle(DataReceived event) {
         final JsonArray data = event.getData();
@@ -92,24 +108,55 @@ public class CoapRequestHandler implements Handler<DataReceived> {
             String path = json.get("path");
             String method = json.get("method");
 
+            //Handle remote close
+            if (method != null && method.equals("close")) {
+                int rid = json.get("rid");
+                CoapClientController cont = ridToController.remove(rid);
+                if (cont != null) {
+                    CoapObserveRelation obs = ridToObservation.remove(rid);
+                    if (obs != null) obs.proactiveCancel();
+                    cont.postToRemote(json);
+                } else {
+                    generateAndAddStandardResponses(json, responses);
+                }
+            }
+            //Handle remote unsubscribe
+            else if (method != null && method.equals("unsubscribe")) {
+                JsonArray local = new JsonArray();
+                Map<CoapClientController, JsonArray> remoteMap = new HashMap<>();
+                parseAndRemoveClients(json, local, remoteMap);
+                int rid = json.get("rid");
+                if (local.size() > 0) {
+                    generateAndAddStandardResponses(Constants.createUnsubReq(local, rid), responses);
+                }
+                if (remoteMap.size() > 0) {
+                    for (Map.Entry<CoapClientController, JsonArray> entry : remoteMap.entrySet()) {
+                        entry.getKey().postToRemote(Constants.createUnsubReq(entry.getValue(), rid));
+                    }
+                }
+            }
             //Handle subscriptions
-            if (method != null && method.equals("subscribe")) {
+            else if (method != null && method.equals("subscribe")) {
                 JsonArray local = new JsonArray();
                 //System.out.println("NEW SUB REQUEST:" + json); //DEBUG
-                Map<String,JsonArray> remote = new HashMap<>();
+                Map<String, JsonArray> remote = new HashMap<>();
                 JsonArray paths = json.get("paths");
                 int rid = json.get("rid");
-                Constants.sortLocalVsRemote(paths,local,remote);
+                Constants.sortLocalVsRemote(paths, local, remote);
                 //Send local subscription requests
                 if (local.size() > 0) {
                     JsonObject localReq = Constants.createSubReq(local, rid);
-                    generateAndAddStandardResponses(localReq,responses);
+                    generateAndAddStandardResponses(localReq, responses);
                     //System.out.println(localReq); //DEBUG
                 }
                 //Send remote subscription requests
                 if (remote.size() > 0) {
                     for (Map.Entry<String, JsonArray> ent : remote.entrySet()) {
                         CoapClientController cont = getControllerFromNodeName(ent.getKey());
+                        for (Object e : ent.getValue()) {
+                            int sid = Constants.getSid(e);
+                            sidToController.put(sid, cont);
+                        }
                         JsonObject remoteReq = Constants.createSubReq(ent.getValue(), rid);
                         CoapResponse resp = cont.postToRemote(remoteReq);
                         //System.out.println("SENT TO REMOTE:" + remoteReq); //DEBUG
@@ -124,14 +171,6 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps
                 switch (method) {
-                    case "unsubscribe":
-                        //nothing to do
-                        break;
-                    case "close":
-                        //destroy local observers
-                        CoapObserveRelation obs = ridsToObservations.remove(json.get("rid"));
-                        if (obs != null) obs.proactiveCancel();
-                        break;
                     case "list":
                         //create listener for the rid that will transmit list data
                         JsonObject obj = Constants.extractPayload(response);
@@ -139,7 +178,9 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         CoapClient client = new CoapClient(uri);
                         //TODO: verify listener
                         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
-                        ridsToObservations.put(json.get("rid"), observation);
+                        int rid = json.get("rid");
+                        ridToObservation.put(rid, observation);
+                        ridToController.put(rid, cliContr);
                         break;
                     case "invoke":
                         //TODO: handle streaming
