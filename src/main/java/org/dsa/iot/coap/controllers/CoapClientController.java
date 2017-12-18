@@ -192,6 +192,7 @@ public class CoapClientController {
 
             System.out.println(uri);
             client = new CoapClient(uri);
+            client.useEarlyNegotiation(64);
             clients.put(url, client);
         }
         return client;

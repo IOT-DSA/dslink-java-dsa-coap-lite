@@ -241,6 +241,7 @@ public class DSACoapServer extends CoapServer {
                     //TODO: Meaningful response
                     break;
                 case "list":
+                    System.out.println("LIST RECEIVED:"+ json); //DEBUG
                     homeServer.createNewRidResource(thisRid, remoteRid);
                     homeServer.sendToLocalBroker(thisRid, json);
                     homeServer.replyWithNewResource(exchange,thisRid);

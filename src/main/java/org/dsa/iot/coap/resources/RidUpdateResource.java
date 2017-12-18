@@ -53,7 +53,7 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
     @Override
     public void handleGET(CoapExchange exchange) {
         exchange.respond(latest.toString());
-        //System.out.println("I AM SENDING THIS:" + latest); //DEBUG
+        System.out.println("I AM SENDING THIS:" + latest); //DEBUG
 
         if (lossless) {
             synchronized (waiting) {
@@ -69,6 +69,7 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     public void postDSAUpdate(JsonObject json) {
         json.put("rid", remoteRid);
+
         if (lossless) {
             synchronized (waiting) {
                 messageQue.add(json);

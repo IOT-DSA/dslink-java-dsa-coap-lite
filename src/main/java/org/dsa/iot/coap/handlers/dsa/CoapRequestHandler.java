@@ -159,7 +159,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         }
                         JsonObject remoteReq = Constants.createSubReq(ent.getValue(), rid);
                         CoapResponse resp = cont.postToRemote(remoteReq);
-                        //System.out.println("SENT TO REMOTE:" + remoteReq); //DEBUG
+                        System.out.println("SENT SUBS TO REMOTE:" + remoteReq); //DEBUG
                     }
                 }
             }
@@ -168,6 +168,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 json.put("path", Constants.extractRemotePath(path));
                 //Post to remote and get response
                 CoapClientController cliContr = getControllerFromPath(path);
+                System.out.println("SENT REQ POST:" + json); //DEBUG
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps
                 switch (method) {
@@ -176,6 +177,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         JsonObject obj = Constants.extractPayload(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
+                        client.useEarlyNegotiation(64);
                         //TODO: verify listener
                         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
                         int rid = json.get("rid");
