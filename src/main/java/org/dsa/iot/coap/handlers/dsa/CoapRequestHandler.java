@@ -50,7 +50,8 @@ public class CoapRequestHandler implements Handler<DataReceived> {
     }
 
     private CoapClientController getControllerFromNodeName(String nodeName) {
-        return ((CoapClientController) rootNode.getChild(nodeName, false).getMetaData());
+        Node node = rootNode.getChild(nodeName, false);
+        return (node != null) ? (CoapClientController) node.getMetaData() : null;
     }
 
     private JsonObject formulateResponse(CoapResponse rawResponse) {
@@ -169,24 +170,25 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 //Post to remote and get response
                 CoapClientController cliContr = getControllerFromPath(path);
                 System.out.println("SENT REQ POST:" + json); //DEBUG
+                if (cliContr == null) continue; //Skip in case the path is wrong
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps
                 switch (method) {
+                    case "invoke":
                     case "list":
                         //create listener for the rid that will transmit list data
                         JsonObject obj = Constants.extractPayload(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
-                        client.useEarlyNegotiation(64);
+                        client.useEarlyNegotiation(64); //TODO: Is this needed
                         //TODO: verify listener
                         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
                         int rid = json.get("rid");
                         ridToObservation.put(rid, observation);
                         ridToController.put(rid, cliContr);
                         break;
-                    case "invoke":
-                        //TODO: handle streaming
                     case "remove":
+                        //TODO: make sure remove and set work
                     case "set":
                     default:
                         JsonObject resp = formulateResponse(response);

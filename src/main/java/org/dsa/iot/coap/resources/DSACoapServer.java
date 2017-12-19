@@ -63,6 +63,7 @@ public class DSACoapServer extends CoapServer {
      */
     public DSACoapServer(Node homeNode) throws SocketException {
         coapLinkHandler = ((CoapLinkHandler) homeNode.getLink().getHandler());
+        setExecutor(coapLinkHandler.getExecutor());
         // provide an instance of a Hello-World resource
         add(new GatewayResource(this));
 
@@ -73,20 +74,20 @@ public class DSACoapServer extends CoapServer {
     private void createRid0Res() {
         if (rid0Resource == null) {
             int rid0 = coapLinkHandler.genLocalId();
-            rid0Resource = new RidUpdateResource(rid0, 0, true);
+            rid0Resource = new RidUpdateResource(this, rid0, 0, true);
             //rid0Resource = new SidUpdateResource(rid0);
             add(rid0Resource);
         }
     }
 
     private void createNewRidResource(int localRid, int remoteRid) {
-        CoapResource ridRes = new RidUpdateResource(localRid, remoteRid, true);
+        CoapResource ridRes = new RidUpdateResource(this, localRid, remoteRid, true);
         openRidsHash.put(localRid, ridRes);
         coapLinkHandler.registerNewRid(localRid, ridRes);
         add(ridRes);
     }
 
-    private void destroyRidResource(int localRid) {
+    public void destroyRidResource(int localRid) {
         CoapResource ridRes = openRidsHash.remove(localRid);
         if (ridRes != null) {
             remove(ridRes);
@@ -238,10 +239,8 @@ public class DSACoapServer extends CoapServer {
                     forwardAndClose(thisRid, remoteRid, json, exchange);
                     break;
                 case "invoke":
-                    //TODO: Meaningful response
-                    break;
                 case "list":
-                    System.out.println("LIST RECEIVED:"+ json); //DEBUG
+                    System.out.println("LIST/INVOKE RECEIVED:"+ json); //DEBUG
                     homeServer.createNewRidResource(thisRid, remoteRid);
                     homeServer.sendToLocalBroker(thisRid, json);
                     homeServer.replyWithNewResource(exchange,thisRid);

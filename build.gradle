@@ -23,7 +23,7 @@ dependencies {
     compile 'org.iot-dsa:dslink:0.+'
     compile 'org.iot-dsa:commons:0.+'
     compile 'org.iot-dsa:historian:0.+'
-    compile 'org.eclipse.californium:californium-core:+'
+    compile 'org.eclipse.californium:californium-core:1.0+'
 }
 
 tasks.withType(FindBugs) {

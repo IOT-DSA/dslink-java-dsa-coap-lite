@@ -3,6 +3,7 @@ package org.dsa.iot.coap.resources;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
+import org.eclipse.californium.core.CoapServer;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 
@@ -16,6 +17,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class RidUpdateResource extends CoapResource implements UpdateResourceInterface {
 
+    private final DSACoapServer homeServer;
+    private final int localRid;
     private Queue<JsonObject> messageQue;
     private boolean lossless;
     private final AtomicBoolean waiting;
@@ -31,9 +34,11 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
         }
     }
 
-    RidUpdateResource(int localRid, int remoteRid, boolean lossless) {
+    RidUpdateResource(DSACoapServer homeServer, int localRid, int remoteRid, boolean lossless) {
         // set resource identifier
         super(Constants.RID_PREFIX + Integer.toString(localRid));
+        this.localRid = localRid;
+        this.homeServer = homeServer;
         this.remoteRid = remoteRid;
         this.lossless = lossless;
 
@@ -50,10 +55,26 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
         getAttributes().setTitle(Constants.RID_PREFIX + Integer.toString(localRid));
     }
 
+    private boolean goodDayToDie(JsonObject json) {
+        String str = json.get("stream");
+        if (str != null && str.equals("closed")) {
+            selfDestruct();
+            return true;
+        }
+        return false;
+    }
+
+    private void selfDestruct() {
+        homeServer.destroyRidResource(localRid);
+        homeServer.retireRemoteRid(remoteRid);
+    }
+
     @Override
     public void handleGET(CoapExchange exchange) {
         exchange.respond(latest.toString());
         System.out.println("I AM SENDING THIS:" + latest); //DEBUG
+
+        if (goodDayToDie(latest)) return;
 
         if (lossless) {
             synchronized (waiting) {

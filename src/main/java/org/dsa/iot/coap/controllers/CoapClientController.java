@@ -37,7 +37,6 @@ public class CoapClientController {
     private CoapLinkHandler coapLinkHandler;
 
     private Endpoint endpoint;
-    private ScheduledThreadPoolExecutor executor = SharedObjects.createDaemonThreadPool(8);
 
     private ScheduledFuture connectionFuture;
 
@@ -46,8 +45,6 @@ public class CoapClientController {
     public CoapClientController(Node node, CoapLinkHandler coapLinkHandler) {
         this.node = node;
         this.coapLinkHandler = coapLinkHandler;
-        executor.setMaximumPoolSize(128);
-        executor.setKeepAliveTime(2, TimeUnit.MINUTES);
     }
 
     private void initDefaultNodes() {
@@ -136,7 +133,7 @@ public class CoapClientController {
         }
 
         endpoint = new CoapEndpoint();
-        endpoint.setExecutor(executor);
+        //endpoint.setExecutor(executor);
 
         for (CoapClient client : clients.values()) {
             client.setEndpoint(endpoint);

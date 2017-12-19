@@ -32,6 +32,8 @@ public class AsynchListener implements CoapHandler {
             System.out.println("GOT MESSAGE:" + json); //DEBUG
             linkHandler.getResponderLink().getWriter().writeResponse(json);
         }
+
+        //TODO: handle killing listeners on close and stream close
     }
 
     @Override

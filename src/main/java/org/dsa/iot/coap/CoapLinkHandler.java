@@ -17,6 +17,7 @@ import org.dsa.iot.dslink.node.actions.Parameter;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
+import org.dsa.iot.shared.SharedObjects;
 import org.eclipse.californium.core.CoapObserveRelation;
 import org.eclipse.californium.core.CoapResource;
 import org.slf4j.Logger;
@@ -27,6 +28,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 public class CoapLinkHandler extends DSLinkHandler {
     private static final Logger LOG = LoggerFactory.getLogger(CoapLinkHandler.class);
@@ -35,6 +38,7 @@ public class CoapLinkHandler extends DSLinkHandler {
     private DSLink requesterLink;
     private DSLink responderLink;
     private final Set<Integer> usedIds = new HashSet<>();
+    private static ScheduledThreadPoolExecutor executor;
 
 
     private int lastId = 0;
@@ -44,6 +48,15 @@ public class CoapLinkHandler extends DSLinkHandler {
     private Map<Integer, CoapResource> ridsToResources = new ConcurrentHashMap<>();
     private Map<Integer, CoapResource> sidsToResources = new ConcurrentHashMap<>();
     private Map<Integer, Integer> localToRemoteSid = new ConcurrentHashMap<>();
+
+    public ScheduledThreadPoolExecutor getExecutor() {
+        if (executor == null) {
+            executor = SharedObjects.createDaemonThreadPool(8);
+            executor.setMaximumPoolSize(128);
+            executor.setKeepAliveTime(2, TimeUnit.MINUTES);
+        }
+        return executor;
+    }
 
     public boolean handleRemoteDSAMessage(JsonObject json) {
         Integer rid = json.get("rid");
