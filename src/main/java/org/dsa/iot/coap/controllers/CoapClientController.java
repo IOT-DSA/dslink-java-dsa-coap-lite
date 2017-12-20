@@ -189,6 +189,7 @@ public class CoapClientController {
 
             System.out.println(uri);
             client = new CoapClient(uri);
+            client.useCONs();
             client.useEarlyNegotiation(64);
             clients.put(url, client);
         }

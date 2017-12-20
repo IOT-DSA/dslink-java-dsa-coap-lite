@@ -9,6 +9,8 @@ import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
 public class Constants {
+    public static final int PING_TIME = 100;
+    public static final int LIFE_TIME = 300;
     public static final String CONN = "conn";
     public static final String REMOTE_NAME = "RemoteDSA";
     public static final String MAIN_SERVER_NAME = "__DSACoapGateway";

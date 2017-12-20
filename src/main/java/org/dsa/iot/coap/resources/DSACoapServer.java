@@ -124,7 +124,7 @@ public class DSACoapServer extends CoapServer {
         json.put("sids", localSids);
     }
 
-    private void sendToLocalBroker(int rid, JsonObject json) {
+    public void sendToLocalBroker(int rid, JsonObject json) {
         json.put("rid", rid);
         coapLinkHandler.getRequesterLink().getWriter().writeRequest(json, false);
     }

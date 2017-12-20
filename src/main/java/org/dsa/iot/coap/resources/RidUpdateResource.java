@@ -19,11 +19,14 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     private final DSACoapServer homeServer;
     private final int localRid;
-    private Queue<JsonObject> messageQue;
+    private final int remoteRid;
+
     private boolean lossless;
     private final AtomicBoolean waiting;
-    private int remoteRid;
+    private Queue<JsonObject> messageQue;
+
     private JsonObject latest;
+    private int willToLive = Constants.LIFE_TIME;
 
     private void clearData() {
         latest = new JsonObject();
@@ -72,7 +75,8 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
     @Override
     public void handleGET(CoapExchange exchange) {
         exchange.respond(latest.toString());
-        System.out.println("I AM SENDING THIS:" + latest); //DEBUG
+        //System.out.println("REPOOOOONSE:" + exchange.advanced().getResponse()); //DEBUG
+        //System.out.println("I AM SENDING THIS:" + latest); //DEBUG
 
         if (goodDayToDie(latest)) return;
 
@@ -90,6 +94,17 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     public void postDSAUpdate(JsonObject json) {
         json.put("rid", remoteRid);
+
+        if (--willToLive % 100 == 0) {
+            if (getObserverCount() < 1) {
+                if (willToLive < 0) {
+                    homeServer.sendToLocalBroker(localRid, Constants.makeCloseReponse(localRid));
+                    selfDestruct();
+                }
+            } else {
+                willToLive = Constants.LIFE_TIME;
+            }
+        }
 
         if (lossless) {
             synchronized (waiting) {

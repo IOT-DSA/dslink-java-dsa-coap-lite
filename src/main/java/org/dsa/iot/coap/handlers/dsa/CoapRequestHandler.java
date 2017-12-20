@@ -180,7 +180,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         JsonObject obj = Constants.extractPayload(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
-                        client.useEarlyNegotiation(64); //TODO: Is this needed
+                        //client.useEarlyNegotiation(64); //TODO: Is this needed
                         //TODO: verify listener
                         CoapObserveRelation observation = client.observe(new AsynchListener(coapLinkHandler));
                         int rid = json.get("rid");
