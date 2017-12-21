@@ -2,6 +2,7 @@ package org.dsa.iot.coap.controllers;
 
 import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.handlers.coap.AsynchBatchListener;
 import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -12,20 +13,17 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
-import org.dsa.iot.shared.SharedObjects;
 import org.eclipse.californium.core.*;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class CoapClientController {
@@ -116,7 +114,7 @@ public class CoapClientController {
         JsonObject ridReq = new JsonObject();
         ridReq.put(Constants.GIMME, Constants.RID_ZERO_HANDLE);
         CoapResponse resp = postToRemote(ridReq);
-        JsonObject cont = Constants.extractPayload(resp);
+        JsonObject cont = Constants.extractPayloadObject(resp);
         String rid0ID = cont.get(Constants.GIMME);
 
         String uri = getUriPrefix() + rid0ID;

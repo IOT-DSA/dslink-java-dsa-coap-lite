@@ -74,6 +74,7 @@ public class DSACoapServer extends CoapServer {
     private void createRid0Res() {
         if (rid0Resource == null) {
             int rid0 = coapLinkHandler.genLocalId();
+            //rid0Resource = new RidBatchResource(this, rid0, 0);
             rid0Resource = new RidUpdateResource(this, rid0, 0, true);
             //rid0Resource = new SidUpdateResource(rid0);
             add(rid0Resource);
@@ -81,6 +82,7 @@ public class DSACoapServer extends CoapServer {
     }
 
     private void createNewRidResource(int localRid, int remoteRid) {
+        //CoapResource ridRes = new RidUpdateResource(this, localRid, remoteRid, true);
         CoapResource ridRes = new RidUpdateResource(this, localRid, remoteRid, true);
         openRidsHash.put(localRid, ridRes);
         coapLinkHandler.registerNewRid(localRid, ridRes);
@@ -222,7 +224,7 @@ public class DSACoapServer extends CoapServer {
         public void handlePOST(final CoapExchange exchange) {
             //System.out.println("Received POST: " + new String(exchange.getRequestPayload())); //DEBUG
 
-            JsonObject json = Constants.extractPayload(exchange);
+            JsonObject json = Constants.extractPayloadObject(exchange);
 
             if (handleInternalComms(json, exchange)) return;
 

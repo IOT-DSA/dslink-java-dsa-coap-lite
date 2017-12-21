@@ -3,6 +3,7 @@ package org.dsa.iot.coap.handlers.dsa;
 import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.coap.controllers.CoapClientController;
+import org.dsa.iot.coap.handlers.coap.AsynchBatchListener;
 import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
@@ -59,7 +60,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         if (rawResponse.getPayload() == null) return null;
         String respString = new String(rawResponse.getPayload());
         System.out.printf("Got response: " + respString);
-        return Constants.extractPayload(rawResponse);
+        return Constants.extractPayloadObject(rawResponse);
     }
 
     private void generateAndAddStandardResponses(JsonObject json, List<JsonObject> responses) {
@@ -154,6 +155,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 if (remote.size() > 0) {
                     for (Map.Entry<String, JsonArray> ent : remote.entrySet()) {
                         CoapClientController cont = getControllerFromNodeName(ent.getKey());
+                        if (cont == null) continue; //TODO: Handle better, when no node present
                         for (Object e : ent.getValue()) {
                             int sid = Constants.getSid(e);
                             sidToController.put(sid, cont);
@@ -177,7 +179,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                     case "invoke":
                     case "list":
                         //create listener for the rid that will transmit list data
-                        JsonObject obj = Constants.extractPayload(response);
+                        JsonObject obj = Constants.extractPayloadObject(response);
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
                         //client.useEarlyNegotiation(64); //TODO: Is this needed

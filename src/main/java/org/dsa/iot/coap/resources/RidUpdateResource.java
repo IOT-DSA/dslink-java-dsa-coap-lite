@@ -3,13 +3,13 @@ package org.dsa.iot.coap.resources;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;
-import org.eclipse.californium.core.CoapServer;
 import org.eclipse.californium.core.coap.CoAP;
 import org.eclipse.californium.core.server.resources.CoapExchange;
 
 import java.util.ArrayDeque;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author James (Juris) Puchin
@@ -26,7 +26,7 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
     private Queue<JsonObject> messageQue;
 
     private JsonObject latest;
-    private int willToLive = Constants.LIFE_TIME;
+    private AtomicInteger willToLive = new AtomicInteger(Constants.LIFE_TIME);
 
     private void clearData() {
         latest = new JsonObject();
@@ -61,7 +61,6 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
     private boolean goodDayToDie(JsonObject json) {
         String str = json.get("stream");
         if (str != null && str.equals("closed")) {
-            selfDestruct();
             return true;
         }
         return false;
@@ -74,14 +73,17 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     @Override
     public void handleGET(CoapExchange exchange) {
-        exchange.respond(latest.toString());
-        //System.out.println("REPOOOOONSE:" + exchange.advanced().getResponse()); //DEBUG
-        //System.out.println("I AM SENDING THIS:" + latest); //DEBUG
+        synchronized (waiting) {
+            exchange.respond(latest.toString());
+            //System.out.println("REPOOOOONSE:" + exchange.advanced().getResponse()); //DEBUG
+            System.out.println("RID UPDATE SENDING:" + latest); //DEBUG
 
-        if (goodDayToDie(latest)) return;
+            if (goodDayToDie(latest)) {
+                selfDestruct();
+                return;
+            }
 
-        if (lossless) {
-            synchronized (waiting) {
+            if (lossless) {
                 if (messageQue.isEmpty()) {
                     waiting.set(false);
                 } else {
@@ -94,22 +96,26 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     public void postDSAUpdate(JsonObject json) {
         json.put("rid", remoteRid);
+        System.out.println("RID UPDATE HEARD:" + json);
 
-        if (--willToLive % 100 == 0) {
+
+        if (willToLive.decrementAndGet() % 100 == 0) {
             if (getObserverCount() < 1) {
-                if (willToLive < 0) {
+                if (willToLive.get() < 0) {
                     homeServer.sendToLocalBroker(localRid, Constants.makeCloseReponse(localRid));
                     selfDestruct();
                 }
             } else {
-                willToLive = Constants.LIFE_TIME;
+                willToLive.set(Constants.LIFE_TIME);
             }
         }
+
 
         if (lossless) {
             synchronized (waiting) {
                 messageQue.add(json);
                 if (!waiting.get()) {
+                    latest = messageQue.poll();
                     waiting.set(true);
                     changed();
                 }

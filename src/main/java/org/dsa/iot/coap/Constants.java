@@ -39,10 +39,22 @@ public class Constants {
         return bytes;
     }
 
-    public static JsonObject extractPayload(CoapResponse response) {
+    public static boolean checkIfArray(CoapResponse response) {
+        byte[] ar = response.getPayload();
+        if (ar == null) return false;
+        return new String(ar).startsWith("[");
+    }
+
+    public static JsonObject extractPayloadObject(CoapResponse response) {
         byte[] ar = response.getPayload();
         if (ar == null) return null;
         return new JsonObject(new String(ar));
+    }
+
+    public static JsonArray extractPayloadArray(CoapResponse response) {
+        byte[] ar = response.getPayload();
+        if (ar == null) return null;
+        return new JsonArray(new String(ar));
     }
 
     public static JsonObject createSubReq(JsonArray paths, int rid) {
@@ -120,8 +132,12 @@ public class Constants {
         }
     }
 
-    public static JsonObject extractPayload(CoapExchange exchange) {
+    public static JsonObject extractPayloadObject(CoapExchange exchange) {
         return new JsonObject(new String(exchange.getRequestPayload()));
+    }
+
+    public static JsonArray extractPayloadArray(CoapExchange exchange) {
+        return new JsonArray(new String(exchange.getRequestPayload()));
     }
 
     public static String extractRemotePath(String path) {
