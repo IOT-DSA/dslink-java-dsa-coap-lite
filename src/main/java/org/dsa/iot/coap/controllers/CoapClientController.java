@@ -73,23 +73,23 @@ public class CoapClientController {
                     .build();
         }
 
-        if (!node.hasChild("ping", false)) {
-            node
-                    .createChild("ping", false)
-                    .setDisplayName("Ping")
-                    .setSerializable(false)
-                    .setAction(new Action(Permission.WRITE, new PingAction()))
-                    .build();
-        }
+//        if (!node.hasChild("ping", false)) {
+//            node
+//                    .createChild("ping", false)
+//                    .setDisplayName("Ping")
+//                    .setSerializable(false)
+//                    .setAction(new Action(Permission.WRITE, new PingAction()))
+//                    .build();
+//        }
 
-        if (!node.hasChild("post", false)) {
-            node
-                    .createChild("post", false)
-                    .setDisplayName("Post")
-                    .setSerializable(false)
-                    .setAction(new Action(Permission.WRITE, new PostAction()))
-                    .build();
-        }
+//        if (!node.hasChild("post", false)) {
+//            node
+//                    .createChild("post", false)
+//                    .setDisplayName("Post")
+//                    .setSerializable(false)
+//                    .setAction(new Action(Permission.WRITE, new PostAction()))
+//                    .build();
+//        }
     }
 
     public void init() {
@@ -185,7 +185,7 @@ public class CoapClientController {
                 doError(e.getMessage());
             }
 
-            System.out.println(uri);
+            //System.out.println(uri); //DEBUG
             client = new CoapClient(uri);
             client.useCONs();
             client.useEarlyNegotiation(64);

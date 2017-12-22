@@ -30,7 +30,7 @@ public class AsynchListener implements CoapHandler {
 
             if (notBlank(json)) {
                 //if (json.get("rid") != null && json.get("rid").equals(0)) System.out.println("GOT UPDATE:" + json); //DEBUG
-                System.out.println("GOT MESSAGE:" + json); //DEBUG
+                //System.out.println("GOT MESSAGE:" + json); //DEBUG
                 linkHandler.getResponderLink().getWriter().writeResponse(json);
             }
         } catch (Exception e) {

@@ -242,20 +242,20 @@ public class DSACoapServer extends CoapServer {
                     break;
                 case "invoke":
                 case "list":
-                    System.out.println("LIST/INVOKE RECEIVED:"+ json); //DEBUG
+                    //System.out.println("LIST/INVOKE RECEIVED:"+ json); //DEBUG
                     homeServer.createNewRidResource(thisRid, remoteRid);
                     homeServer.sendToLocalBroker(thisRid, json);
                     homeServer.replyWithNewResource(exchange,thisRid);
                     break;
                 case "subscribe":
-                    System.out.println("SUBSCRIBE RECEIVED:"+ json); //DEBUG
+                    //System.out.println("SUBSCRIBE RECEIVED:"+ json); //DEBUG
                     homeServer.localizeSubSids(json);
                     forwardAndClose(thisRid, remoteRid, json, exchange);
-                    System.out.println("SUBSCRIBE FROWARDED:"+ json); //DEBUG
+                    //System.out.println("SUBSCRIBE FROWARDED:"+ json); //DEBUG
                     break;
                 case "unsubscribe":
                     //Need to close update servers
-                    System.out.println("UNSUBSCRIBE RECEIVED:"+ json); //DEBUG
+                    //System.out.println("UNSUBSCRIBE RECEIVED:"+ json); //DEBUG
                     homeServer.localizeUnsubSids(json);
                     forwardAndClose(thisRid, remoteRid, json, exchange);
                     homeServer.retireRemoteSids(json.get("sids"));

@@ -20,7 +20,7 @@ public class AsynchBatchListener implements CoapHandler {
 
     private boolean notBlank(JsonArray json) {
         if (json == null || json.size() < 1) return false;
-        System.out.println("GOT ARRAY:" + json);
+        //System.out.println("GOT ARRAY:" + json);
         JsonObject obj = json.get(0);
         String val = obj.get(Constants.BLANK_KEY);
         return !(val != null && val.equals(Constants.BLANK_VAL));
@@ -34,7 +34,7 @@ public class AsynchBatchListener implements CoapHandler {
             //if (json.get("rid") != null && json.get("rid").equals(0)) System.out.println("GOT UPDATE:" + json); //DEBUG
             for (Object o : jsonAr) {
                 JsonObject json = (JsonObject) o;
-                System.out.println("GOT MESSAGE:" + json); //DEBUG
+                //System.out.println("GOT MESSAGE:" + json); //DEBUG
                 linkHandler.getResponderLink().getWriter().writeResponse(json);
                 //TODO: handle killing listeners on close and stream close
             }

@@ -76,7 +76,7 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
         synchronized (waiting) {
             exchange.respond(latest.toString());
             //System.out.println("REPOOOOONSE:" + exchange.advanced().getResponse()); //DEBUG
-            System.out.println("RID UPDATE SENDING:" + latest); //DEBUG
+            //System.out.println("RID UPDATE SENDING:" + latest); //DEBUG
 
             if (goodDayToDie(latest)) {
                 selfDestruct();
@@ -96,7 +96,7 @@ public class RidUpdateResource extends CoapResource implements UpdateResourceInt
 
     public void postDSAUpdate(JsonObject json) {
         json.put("rid", remoteRid);
-        System.out.println("RID UPDATE HEARD:" + json);
+        //System.out.println("RID UPDATE HEARD:" + json); //DEBUG
 
 
         if (willToLive.decrementAndGet() % 100 == 0) {

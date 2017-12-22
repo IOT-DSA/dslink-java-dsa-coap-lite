@@ -162,7 +162,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                         }
                         JsonObject remoteReq = Constants.createSubReq(ent.getValue(), rid);
                         CoapResponse resp = cont.postToRemote(remoteReq);
-                        System.out.println("SENT SUBS TO REMOTE:" + remoteReq); //DEBUG
+                        //System.out.println("SENT SUBS TO REMOTE:" + remoteReq); //DEBUG
                     }
                 }
             }
@@ -171,7 +171,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 json.put("path", Constants.extractRemotePath(path));
                 //Post to remote and get response
                 CoapClientController cliContr = getControllerFromPath(path);
-                System.out.println("SENT REQ POST:" + json); //DEBUG
+                //System.out.println("SENT REQ POST:" + json); //DEBUG
                 if (cliContr == null) continue; //Skip in case the path is wrong
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps

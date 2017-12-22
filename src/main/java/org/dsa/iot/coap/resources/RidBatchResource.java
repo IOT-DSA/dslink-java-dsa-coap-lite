@@ -79,7 +79,7 @@ public class RidBatchResource extends CoapResource implements UpdateResourceInte
             } else {
                 exchange.respond(messageQue.toString());
                 //System.out.println("REPOOOOONSE:" + exchange.advanced().getResponse()); //DEBUG
-                System.out.println("RID" + remoteRid + "QUE SENDING:" + messageQue); //DEBUG
+                //System.out.println("RID" + remoteRid + "QUE SENDING:" + messageQue); //DEBUG
 
                 for (Object o : messageQue) {
                     if (goodDayToDie((JsonObject) o)) {
@@ -95,7 +95,7 @@ public class RidBatchResource extends CoapResource implements UpdateResourceInte
 
     public void postDSAUpdate(JsonObject json) {
         json.put("rid", remoteRid);
-        System.out.println("RID UPDATE ADDED TO QUE:" + json);
+        //System.out.println("RID UPDATE ADDED TO QUE:" + json);
 
         synchronized (first) {
             messageQue.add(json);
