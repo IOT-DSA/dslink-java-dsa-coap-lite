@@ -2,7 +2,6 @@ package org.dsa.iot.coap.controllers;
 
 import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
-import org.dsa.iot.coap.handlers.coap.AsynchBatchListener;
 import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
@@ -13,7 +12,10 @@ import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.Objects;
 import org.dsa.iot.dslink.util.handler.Handler;
 import org.dsa.iot.dslink.util.json.JsonObject;
-import org.eclipse.californium.core.*;
+import org.eclipse.californium.core.CoapClient;
+import org.eclipse.californium.core.CoapObserveRelation;
+import org.eclipse.californium.core.CoapResponse;
+import org.eclipse.californium.core.Utils;
 import org.eclipse.californium.core.network.CoapEndpoint;
 import org.eclipse.californium.core.network.Endpoint;
 import org.slf4j.Logger;
@@ -28,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 public class CoapClientController {
 
+    private static final int RETRIES = 50;
     private static final Logger LOG = LoggerFactory.getLogger(CoapClientController.class);
 
     private Node node;
@@ -105,7 +108,7 @@ public class CoapClientController {
 //        } catch (SocketException e) {
 //            System.err.println("Failed to initialize server: " + e.getMessage());
 //        }
-        Objects.getDaemonThreadPool().schedule(this::setupSubscriptionObserver,0, TimeUnit.SECONDS);
+        Objects.getDaemonThreadPool().schedule(this::setupSubscriptionObserver, 0, TimeUnit.SECONDS);
 
         node.getChild("status", false).setValue(new Value("Ready"));
     }
@@ -165,9 +168,13 @@ public class CoapClientController {
     }
 
     public CoapResponse postToRemote(JsonObject json) {
-        //System.out.println("Emit: " + json); //DEBUG
+        //System.out.println("Sent: " + json); //DEBUG
         byte[] input = Constants.jsonToBytes(json);
-        return getClient().post(input, 0);
+        CoapResponse resp = null;
+        int tries = 0;
+        while (resp == null && tries++ < RETRIES) resp = getClient().post(input, 0);
+        //System.out.println("Got response to: " + json + "\n" + resp); //DEBUG
+        return resp;
     }
 
     public String getUriPrefix() {
@@ -187,11 +194,47 @@ public class CoapClientController {
 
             //System.out.println(uri); //DEBUG
             client = new CoapClient(uri);
-            client.useCONs();
-            client.useEarlyNegotiation(64);
+            //client.useCONs();
+            //client.useEarlyNegotiation(64);
             clients.put(url, client);
         }
         return client;
+    }
+
+    public class DeleteCoapClientAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            if (connectionFuture != null && !connectionFuture.isDone()) {
+                connectionFuture.cancel(true);
+            }
+
+            if (endpoint != null) {
+                endpoint.destroy();
+            }
+
+            node.delete(false);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////
+    // Testing Methods
+    ///////////////////////////////////////////////////////////////////////////
+
+    public class PingAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            helloWorldGET();
+        }
+    }
+
+    public class PostAction implements Handler<ActionResult> {
+
+        @Override
+        public void handle(ActionResult event) {
+            helloWorldPOST();
+        }
     }
 
     private void helloWorldGET() {
@@ -212,37 +255,4 @@ public class CoapClientController {
 
         postToRemote(obj);
     }
-
-    public class DeleteCoapClientAction implements Handler<ActionResult> {
-
-        @Override
-        public void handle(ActionResult event) {
-            if (connectionFuture != null && !connectionFuture.isDone()) {
-                connectionFuture.cancel(true);
-            }
-
-            if (endpoint != null) {
-                endpoint.destroy();
-            }
-
-            node.delete(false);
-        }
-    }
-
-    public class PingAction implements Handler<ActionResult> {
-
-        @Override
-        public void handle(ActionResult event) {
-            helloWorldGET();
-        }
-    }
-
-    public class PostAction implements Handler<ActionResult> {
-
-        @Override
-        public void handle(ActionResult event) {
-            helloWorldPOST();
-        }
-    }
-
 }

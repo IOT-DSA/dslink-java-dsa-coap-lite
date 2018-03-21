@@ -80,9 +80,9 @@ public class Constants {
         return ret;
     }
 
-    public static JsonObject createSidUpd(Map<Integer,Object> updates) {
+    public static JsonObject createSidUpd(Map<Integer, Object> updates) {
         JsonArray upAr = new JsonArray();
-        for (Map.Entry<Integer,Object> ent : updates.entrySet()) {
+        for (Map.Entry<Integer, Object> ent : updates.entrySet()) {
             upAr.add(ent.getValue());
         }
         JsonObject ret = new JsonObject();
@@ -91,7 +91,7 @@ public class Constants {
         return ret;
     }
 
-    public static int getAndReplaceSid(Object json, Map<Integer,Integer> replaceMap) {
+    public static int getAndReplaceSid(Object json, Map<Integer, Integer> replaceMap) {
         int sid;
         if (json instanceof JsonObject) {
             sid = ((JsonObject) json).get("sid");
@@ -123,7 +123,7 @@ public class Constants {
             String subPath = sub.get("path");
             if (subPath != null && subPath.contains(Constants.REMOTE_NAME)) {
                 String nodeName = extractNodeName(subPath);
-                sub.put("path",extractRemotePath(sub.get("path")));
+                sub.put("path", extractRemotePath(sub.get("path")));
                 if (remote.containsKey(nodeName)) remote.get(nodeName).add(sub);
                 else remote.put(nodeName, new JsonArray().add(sub));
             } else {

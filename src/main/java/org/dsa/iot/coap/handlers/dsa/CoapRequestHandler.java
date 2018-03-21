@@ -3,7 +3,6 @@ package org.dsa.iot.coap.handlers.dsa;
 import org.dsa.iot.coap.CoapLinkHandler;
 import org.dsa.iot.coap.Constants;
 import org.dsa.iot.coap.controllers.CoapClientController;
-import org.dsa.iot.coap.handlers.coap.AsynchBatchListener;
 import org.dsa.iot.coap.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
@@ -55,11 +54,11 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         return (node != null) ? (CoapClientController) node.getMetaData() : null;
     }
 
-    private JsonObject formulateResponse(CoapResponse rawResponse) {
+    public static JsonObject formulateResponse(final CoapResponse rawResponse) {
         //TODO: Hacky exception handling?
         if (rawResponse.getPayload() == null) return null;
-        String respString = new String(rawResponse.getPayload());
-        System.out.printf("Got response: " + respString);
+        //String respString = new String(rawResponse.getPayload());
+        //System.out.printf("Got response: " + respString); //DEBUG
         return Constants.extractPayloadObject(rawResponse);
     }
 
@@ -138,6 +137,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 }
             }
             //Handle subscriptions
+            //TODO: when remote client goes down, need to send close requests to local broker (implement elsewhere, probably)
             else if (method != null && method.equals("subscribe")) {
                 JsonArray local = new JsonArray();
                 //System.out.println("NEW SUB REQUEST:" + json); //DEBUG
@@ -161,7 +161,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                             sidToController.put(sid, cont);
                         }
                         JsonObject remoteReq = Constants.createSubReq(ent.getValue(), rid);
-                        CoapResponse resp = cont.postToRemote(remoteReq);
+                        cont.postToRemote(remoteReq);
                         //System.out.println("SENT SUBS TO REMOTE:" + remoteReq); //DEBUG
                     }
                 }
@@ -172,7 +172,10 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                 //Post to remote and get response
                 CoapClientController cliContr = getControllerFromPath(path);
                 //System.out.println("SENT REQ POST:" + json); //DEBUG
-                if (cliContr == null) continue; //Skip in case the path is wrong
+                if (cliContr == null) {
+                    System.out.println("PATH IS WRONG!");
+                    continue;
+                }//Skip in case the path is wrong
                 CoapResponse response = cliContr.postToRemote(json);
                 //Do method specific steps
                 switch (method) {
@@ -180,6 +183,7 @@ public class CoapRequestHandler implements Handler<DataReceived> {
                     case "list":
                         //create listener for the rid that will transmit list data
                         JsonObject obj = Constants.extractPayloadObject(response);
+                        //System.out.println("Listing: " + obj); //DEBUG
                         String uri = cliContr.getUriPrefix() + obj.get(Constants.REMOTE_RID_FIELD);
                         CoapClient client = new CoapClient(uri);
                         //client.useEarlyNegotiation(64); //TODO: Is this needed
@@ -205,70 +209,4 @@ public class CoapRequestHandler implements Handler<DataReceived> {
         Integer msgId = event.getMsgId();
         coapLinkHandler.getResponderLink().getWriter().writeRequestResponses(msgId, responses);
     }
-
-//        List<JsonObject> responses = new LinkedList<>();
-
-//        for (Object object : data) {
-//            JsonObject json = (JsonObject) object;
-//            Integer rid = json.get("rid");
-//            String path = json.get("path");
-//            CoapClientController controller = ridsToControllers.get(rid);
-//
-//            if (controller == null && path != null) {
-//                for (CoapClientController client: clients) {
-//                    String rootpath = client.getRootPath();
-//                    if (path.startsWith(rootpath) || path.startsWith(rootpath.substring(1))) {
-//                        controller = client;
-//                        ridsToControllers.put(rid, controller);
-//                        break;
-//                    }
-//                }
-//            }
-//
-//            if (controller != null) {
-//                if (path != null) {
-//                    if (!path.startsWith("/")) {
-//                        path = "/" + path;
-//                    }
-//                    String rootpath = controller.getRootPath();
-//                    if (path.startsWith(rootpath)) {
-//                        path = path.substring(rootpath.length());
-//                        if (path.length() <= 0) {
-//                            path = "/";
-//                        }
-//                    }
-//                    json.put("path", path);
-//                }
-//
-//                controller.emit(json);
-//
-//                if ("close".equals(json.get("method"))) {
-//                    ridsToControllers.remove(rid);
-//                }
-//            } else {
-//                //Standard case
-//                try {
-//                    JsonObject resp = link.getResponder().parse(json);
-//                    responses.add(resp);
-//                } catch (Exception e) {
-//                    JsonObject resp = new JsonObject();
-//                    if (rid != null) {
-//                        resp.put("rid", rid);
-//                    }
-//                    resp.put("stream", StreamState.CLOSED.getJsonName());
-//
-//                    JsonObject err = new JsonObject();
-//                    err.put("msg", e.getMessage());
-//                    { // Build stack trace
-//                        StringWriter writer = new StringWriter();
-//                        e.printStackTrace(new PrintWriter(writer));
-//                        err.put("detail", writer.toString());
-//                    }
-//                    resp.put("error", err);
-//                    responses.add(resp);
-//                }
-//                Integer msgId = event.getMsgId();
-//                writeResponses(msgId, responses);
-//            }
-//        }
 }
