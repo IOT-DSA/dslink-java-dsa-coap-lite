@@ -1,7 +1,7 @@
 apply plugin: 'java'
 apply plugin: 'application'
 
-version '1.0.0.0'
+version '2.0.1.0'
 
 mainClassName = 'org.dsa.iot.coap.Main'
 sourceCompatibility = 1.8
