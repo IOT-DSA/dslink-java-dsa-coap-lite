@@ -1,6 +1,6 @@
-package org.dsa.iot.coap.resources;
+package org.dsa.iot.coap.lite.resources;
 
-import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.lite.Constants;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapResource;

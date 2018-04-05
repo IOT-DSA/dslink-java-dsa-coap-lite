@@ -1,7 +1,7 @@
-package org.dsa.iot.coap.handlers.coap;
+package org.dsa.iot.coap.lite.handlers.coap;
 
-import org.dsa.iot.coap.CoapLinkHandler;
-import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.lite.CoapLinkHandler;
+import org.dsa.iot.coap.lite.Constants;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
 import org.eclipse.californium.core.CoapHandler;

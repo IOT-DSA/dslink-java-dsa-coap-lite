@@ -1,6 +1,6 @@
-package org.dsa.iot.coap.actions;
+package org.dsa.iot.coap.lite.actions;
 
-import org.dsa.iot.coap.CoapLinkHandler;
+import org.dsa.iot.coap.lite.CoapLinkHandler;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.NodeManager;
 import org.dsa.iot.dslink.node.actions.ActionResult;

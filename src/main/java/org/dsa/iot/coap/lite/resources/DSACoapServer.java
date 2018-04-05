@@ -14,10 +14,10 @@
  *    Matthias Kovatsch - creator and main architect
  *    Kai Hudalla (Bosch Software Innovations GmbH) - add endpoints for all IP addresses
  ******************************************************************************/
-package org.dsa.iot.coap.resources;
+package org.dsa.iot.coap.lite.resources;
 
-import org.dsa.iot.coap.CoapLinkHandler;
-import org.dsa.iot.coap.Constants;
+import org.dsa.iot.coap.lite.CoapLinkHandler;
+import org.dsa.iot.coap.lite.Constants;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.util.json.JsonArray;
 import org.dsa.iot.dslink.util.json.JsonObject;
