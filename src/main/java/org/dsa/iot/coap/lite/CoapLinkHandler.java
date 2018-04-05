@@ -1,13 +1,12 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.lite;
 
-import org.dsa.iot.coap.actions.CreateCoapClientAction;
-import org.dsa.iot.coap.actions.CreateCoapServerAction;
-import org.dsa.iot.coap.controllers.CoapClientController;
-import org.dsa.iot.coap.controllers.CoapServerController;
-import org.dsa.iot.coap.handlers.dsa.CoapRequestHandler;
-import org.dsa.iot.coap.handlers.dsa.CoapResponseHandler;
-import org.dsa.iot.coap.resources.RidUpdateResource;
-import org.dsa.iot.coap.resources.UpdateResourceInterface;
+import org.dsa.iot.coap.lite.actions.CreateCoapClientAction;
+import org.dsa.iot.coap.lite.actions.CreateCoapServerAction;
+import org.dsa.iot.coap.lite.controllers.CoapClientController;
+import org.dsa.iot.coap.lite.controllers.CoapServerController;
+import org.dsa.iot.coap.lite.handlers.dsa.CoapRequestHandler;
+import org.dsa.iot.coap.lite.handlers.dsa.CoapResponseHandler;
+import org.dsa.iot.coap.lite.resources.UpdateResourceInterface;
 import org.dsa.iot.dslink.DSLink;
 import org.dsa.iot.dslink.DSLinkHandler;
 import org.dsa.iot.dslink.node.Node;

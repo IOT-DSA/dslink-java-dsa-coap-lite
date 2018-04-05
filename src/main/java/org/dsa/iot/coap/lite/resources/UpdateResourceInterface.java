@@ -1,4 +1,4 @@
-package org.dsa.iot.coap.resources;
+package org.dsa.iot.coap.lite.resources;
 
 import org.dsa.iot.dslink.util.json.JsonObject;
 

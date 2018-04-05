@@ -1,6 +1,6 @@
-package org.dsa.iot.coap.controllers;
+package org.dsa.iot.coap.lite.controllers;
 
-import org.dsa.iot.coap.resources.DSACoapServer;
+import org.dsa.iot.coap.lite.resources.DSACoapServer;
 import org.dsa.iot.dslink.node.Node;
 import org.dsa.iot.dslink.node.Permission;
 import org.dsa.iot.dslink.node.actions.Action;
@@ -8,7 +8,6 @@ import org.dsa.iot.dslink.node.actions.ActionResult;
 import org.dsa.iot.dslink.node.value.Value;
 import org.dsa.iot.dslink.node.value.ValueType;
 import org.dsa.iot.dslink.util.handler.Handler;
-import org.dsa.iot.dslink.util.json.JsonObject;
 
 import java.net.SocketException;
 

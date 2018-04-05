@@ -1,4 +1,4 @@
-package org.dsa.iot.coap;
+package org.dsa.iot.coap.lite;
 
 import org.dsa.iot.dslink.DSLinkFactory;
 

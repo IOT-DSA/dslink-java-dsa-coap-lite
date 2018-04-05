@@ -1,9 +1,9 @@
-package org.dsa.iot.coap.handlers.dsa;
+package org.dsa.iot.coap.lite.handlers.dsa;
 
-import org.dsa.iot.coap.CoapLinkHandler;
-import org.dsa.iot.coap.Constants;
-import org.dsa.iot.coap.controllers.CoapClientController;
-import org.dsa.iot.coap.handlers.coap.AsynchListener;
+import org.dsa.iot.coap.lite.CoapLinkHandler;
+import org.dsa.iot.coap.lite.Constants;
+import org.dsa.iot.coap.lite.controllers.CoapClientController;
+import org.dsa.iot.coap.lite.handlers.coap.AsynchListener;
 import org.dsa.iot.dslink.connection.DataHandler.DataReceived;
 import org.dsa.iot.dslink.methods.StreamState;
 import org.dsa.iot.dslink.node.Node;
